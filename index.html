@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bigfoot Sightings Visualization</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            background-color: #fff;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        figure {
+            width: 100%;
+            max-width: 900px;
+            margin: 20px 0;
+            padding: 0;
+        }
+        figcaption {
+            font-size: 0.9em;
+            color: #555;
+            text-align: center;
+            margin-top: 8px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .plot-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center; /* Center the title above the plot */
+        }
+    </style>
+</head>
+<body>
+    <h1>Bigfoot Sighting Patterns</h1>
+
+    <figure id="altitudeSentimentContainer">
+        <div id="altitudeSentimentPlot"></div>
+        <figcaption id="altitudeSentimentCaption"></figcaption>
+    </figure>
+
+    <figure id="delayYearContainer">
+        <div id="delayYearPlot"></div>
+        <figcaption id="delayYearCaption"></figcaption>
+    </figure>
+
+    <figure id="narrativeLenYearContainer">
+        <div id="narrativeLenYearPlot"></div>
+        <figcaption id="narrativeLenYearCaption"></figcaption>
+    </figure>
+
+    <script type="application/json" id="plotData"></script>
+    <script type="module">
+        // Import necessary libraries
+        // Using fflate for unzipping, and papaparse for CSV parsing.
+        // Note: In a real browser environment, these would be fetched from a CDN.
+        // For this environment, we'll assume they are available or use placeholders.
+        // Actual CDN links:
+        // import * as fflate from 'https://cdn.jsdelivr.net/npm/fflate@0.8.1/esm/browser.js';
+        // import Papa from 'https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js';
+
+        // Placeholder for local testing if CDN is not available in sandbox.
+        // In a real scenario, ensure these paths are correct or use CDNs.
+        // For now, I will write the code as if these modules are available.
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOM fully loaded and parsed');
+
+            // --- Data Loading and Parsing ---
+            async function loadAndParseCsv() {
+                try {
+                    console.log('Fetching zip file...');
+                    const response = await fetch('reports.csv.zip');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const zipBuffer = await response.arrayBuffer();
+                    console.log('Zip file fetched, size:', zipBuffer.byteLength);
+
+                    // Dynamically import fflate - using a try-catch for robustness
+                    let fflate;
+                    try {
+                        fflate = await import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js');
+                        console.log('fflate loaded successfully');
+                    } catch (e) {
+                        console.error('Error loading fflate:', e);
+                        alert('Error loading decompression library. Please check console.');
+                        return [];
+                    }
+
+                    // Dynamically import PapaParse
+                    let Papa;
+                    try {
+                        Papa = (await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js')).default;
+                        console.log('PapaParse loaded successfully');
+                    } catch (e) {
+                        console.error('Error loading PapaParse:', e);
+                        alert('Error loading CSV parsing library. Please check console.');
+                        return [];
+                    }
+
+
+                    console.log('Unzipping CSV data...');
+                    const decompressed = fflate.unzipSync(new Uint8Array(zipBuffer));
+                    const csvFileEntry = Object.entries(decompressed).find(([name, data]) => name.endsWith('reports.csv'));
+
+                    if (!csvFileEntry) {
+                        throw new Error('reports.csv not found in the zip archive.');
+                    }
+
+                    const csvDataUint8Array = csvFileEntry[1];
+                    const csvString = new TextDecoder().decode(csvDataUint8Array);
+                    console.log('CSV data unzipped and decoded.');
+
+                    console.log('Parsing CSV data...');
+                    const parseResult = Papa.parse(csvString, {
+                        header: true,
+                        skipEmptyLines: true,
+                        dynamicTyping: (field) => {
+                            // Specify fields that should NOT be dynamically typed to number if they are IDs or years
+                            if (field === 'Id' || field === 'Year') {
+                                return false; // Keep as string initially, parse 'Year' explicitly later
+                            }
+                            return true; // Enable dynamic typing for other fields
+                        },
+                    });
+                    console.log('CSV data parsed. Number of rows:', parseResult.data.length);
+                    if (parseResult.errors.length > 0) {
+                        console.warn('CSV parsing errors:', parseResult.errors);
+                    }
+
+                    // Log first few rows to verify headers and data
+                    // console.log('Sample parsed rows:', parseResult.data.slice(0, 3));
+
+
+                    // TEMP: For now, just return the parsed data. Preprocessing will be next.
+                    return parseResult.data;
+
+                } catch (error) {
+                    console.error('Error loading or parsing CSV data:', error);
+                    document.body.innerHTML = `<p>Error loading data: ${error.message}. Please check the console for details.</p>`;
+                    return []; // Return empty array on error
+                }
+            }
+
+            const rawData = await loadAndParseCsv();
+
+            if (rawData.length === 0) {
+                console.error('No data loaded, aborting further processing.');
+                return;
+            }
+
+            // For now, let's just confirm data is loaded by logging a sample.
+            // The actual processing and plotting will be added in subsequent steps.
+            console.log(`Successfully loaded ${rawData.length} rows.`);
+            if (rawData.length > 0) {
+                console.log('First row sample:', rawData[0]);
+                // Check for expected columns based on the `head` output earlier
+                const expectedCols = ['Id', 'Submitted Date', 'Year', 'Season', 'State', 'County', 'Observed'];
+                const missingCols = expectedCols.filter(col => !(col in rawData[0]));
+                if (missingCols.length > 0) {
+                    console.warn(`Warning: The following expected columns are missing from the parsed CSV: ${missingCols.join(', ')}`);
+                } else {
+                    console.log("All initially expected columns are present.");
+                }
+                // Crucial columns for plots - need to verify their presence:
+                // For Altitude vs Sentiment: 'elevation_m' (or similar) and 'vader_sentiment' (or similar)
+                // For Delay vs Year: 'Submitted Date', 'Year'
+                // For Narrative Len vs Year: 'Observed', 'Year'
+                if (!('elevation_m' in rawData[0]) && !('altitude' in rawData[0]) && !('elevation' in rawData[0])) { // Checking a few common names for elevation
+                    console.warn("Potential issue: Elevation column ('elevation_m', 'altitude', or 'elevation') not found in the first row. Altitude vs Sentiment plot might be affected.");
+                }
+                if (!('vader' in rawData[0]) && !('vader_sentiment' in rawData[0])) { // Checking for vader
+                     console.warn("Potential issue: Vader sentiment column ('vader' or 'vader_sentiment') not found in the first row. Altitude vs Sentiment plot might be affected.");
+                }
+                 if (!('geohash' in rawData[0])) {
+                     console.warn("Column 'geohash' not found. This column often contains elevation data after the '@'. Will attempt to parse if available.");
+                 } else {
+                     console.log("Column 'geohash' found. Will attempt to parse elevation from it.");
+                 }
+                 if (!('vader' in rawData[0])) { // vader is often a direct column name for VADER sentiment
+                    console.warn("Column 'vader' not found. Altitude vs Sentiment plot might be affected if another sentiment column isn't used.");
+                 }
+
+
+            }
+
+            // --- Helper Functions for Pre-processing ---
+
+            // Helper to parse "Day, Month Day, Year" format
+            function parseBigfootDate(dateString) {
+                if (!dateString || typeof dateString !== 'string') return null;
+                // Example: "Saturday, November 12, 2005."
+                // Remove weekday and trailing period for easier parsing
+                const cleanDateString = dateString.replace(/^\w+,\s*/, '').replace(/\.$/, '');
+                const date = new Date(cleanDateString);
+                return isNaN(date.getTime()) ? null : date;
+            }
+
+            function getElevationFromGeohash(geohash) {
+                if (typeof geohash === 'string' && geohash.includes('@')) {
+                    const parts = geohash.split('@');
+                    if (parts.length > 1) {
+                        const elevationStr = parts[1].replace('m', '');
+                        const elevation = parseFloat(elevationStr);
+                        if (!isNaN(elevation)) {
+                            return elevation;
+                        }
+                    }
+                }
+                return null;
+            }
+
+
+            // --- Helper Functions for Data Cleaning ---
+            function calculateIQR(arr) {
+                if (arr.length < 4) return { q1: 0, q3: 0, iqr: 0 }; // Not enough data for meaningful IQR
+                const sortedArr = [...arr].sort((a, b) => a - b);
+                const q1Index = Math.floor(sortedArr.length / 4);
+                const q3Index = Math.floor(sortedArr.length * 3 / 4);
+                const q1 = sortedArr[q1Index];
+                const q3 = sortedArr[q3Index];
+                const iqr = q3 - q1;
+                return { q1, q3, iqr };
+            }
+
+            function removeOutliers(data, xKey, yKey) {
+                if (!data || data.length === 0) return [];
+
+                const xValues = data.map(d => d[xKey]).filter(v => typeof v === 'number' && !isNaN(v));
+                const yValues = data.map(d => d[yKey]).filter(v => typeof v === 'number' && !isNaN(v));
+
+                if (xValues.length < 4 || yValues.length < 4) return data; // Not enough data to reliably calculate IQR
+
+                const { q1: xQ1, q3: xQ3, iqr: xIQR } = calculateIQR(xValues);
+                const xLowerBound = xQ1 - 1.5 * xIQR;
+                const xUpperBound = xQ3 + 1.5 * xIQR;
+
+                const { q1: yQ1, q3: yQ3, iqr: yIQR } = calculateIQR(yValues);
+                const yLowerBound = yQ1 - 1.5 * yIQR;
+                const yUpperBound = yQ3 + 1.5 * yIQR;
+
+                const filteredData = data.filter(d => {
+                    const xVal = d[xKey];
+                    const yVal = d[yKey];
+                    const isXOk = typeof xVal === 'number' && !isNaN(xVal) && xVal >= xLowerBound && xVal <= xUpperBound;
+                    const isYOk = typeof yVal === 'number' && !isNaN(yVal) && yVal >= yLowerBound && yVal <= yUpperBound;
+                    return isXOk && isYOk;
+                });
+                console.log(`Outlier removal for ${xKey}/${yKey}: ${data.length} -> ${filteredData.length} points.`);
+                return filteredData;
+            }
+
+            function reservoirSample(data, maxSize) {
+                if (!data || data.length <= maxSize) return data;
+
+                const reservoir = [];
+                for (let i = 0; i < maxSize; i++) {
+                    reservoir[i] = data[i];
+                }
+
+                for (let i = maxSize; i < data.length; i++) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    if (j < maxSize) {
+                        reservoir[j] = data[i];
+                    }
+                }
+                console.log(`Reservoir sampling: ${data.length} -> ${reservoir.length} points (maxSize: ${maxSize}).`);
+                return reservoir;
+            }
+
+
+            // --- Pre-processing Logic ---
+            function preprocessData(data) {
+                console.log('Starting pre-processing...');
+                const altitudeSentimentData = [];
+                const delayYearData = [];
+                const narrativeLenYearData = [];
+
+                let elevationSource = null; // To log which elevation field was found
+                if (data.length > 0) {
+                    if ('elevation_m' in data[0]) elevationSource = 'elevation_m';
+                    else if ('altitude' in data[0]) elevationSource = 'altitude';
+                    else if ('elevation' in data[0]) elevationSource = 'elevation';
+                    else if ('geohash' in data[0]) elevationSource = 'geohash'; // Will attempt parsing from this
+                    if(elevationSource) console.log(`Using column '${elevationSource}' for elevation data.`);
+                    else console.warn('No standard elevation column found (elevation_m, altitude, elevation, geohash). Altitude-based plots may be empty.');
+                }
+                let sentimentSource = null;
+                 if (data.length > 0) {
+                    if ('vader' in data[0]) sentimentSource = 'vader';
+                    else if ('vader_sentiment' in data[0]) sentimentSource = 'vader_sentiment';
+                    if(sentimentSource) console.log(`Using column '${sentimentSource}' for sentiment data.`);
+                    else console.warn('No standard sentiment column found (vader, vader_sentiment). Sentiment-based plots may be empty.');
+                 }
+
+
+                for (const row of data) {
+                    try {
+                        const id = row.Id || row.id || null;
+                        const county = row.County || row.county || 'N/A';
+                        const state = row.State || row.state || 'N/A';
+                        const season = row.Season || row.season || 'N/A';
+
+                        const observedText = row.Observed || row.observed || '';
+                        const narrativeLen = observedText.length;
+
+                        const eventYearStr = row.Year || row.year;
+                        const eventYear = parseInt(eventYearStr, 10);
+
+                        const submittedDateStr = row['Submitted Date'] || row.submitted_date;
+                        const submittedDate = parseBigfootDate(submittedDateStr);
+
+                        // Common data for tooltips
+                        const tooltipData = { id, county, state, season };
+
+                        // 1. Altitude vs Sentiment
+                        let elevation = null;
+                        if (elevationSource === 'geohash') {
+                            elevation = getElevationFromGeohash(row.geohash);
+                        } else if (elevationSource) {
+                            elevation = parseFloat(row[elevationSource]);
+                        }
+
+                        let sentiment = null;
+                        if (sentimentSource) {
+                            sentiment = parseFloat(row[sentimentSource]);
+                        }
+
+
+                        if (elevation !== null && !isNaN(elevation) && sentiment !== null && !isNaN(sentiment)) {
+                            altitudeSentimentData.push({
+                                x: elevation, // elevation in metres
+                                y: sentiment, // Vader sentiment of "Observed"
+                                ...tooltipData
+                            });
+                        }
+
+                        // 2. Delay vs Year
+                        if (submittedDate && !isNaN(eventYear) && eventYear > 1000) { // Basic validation for year
+                            const eventDateApproximation = new Date(eventYear, 0, 1); // Assume start of year for event
+                            const delayMillis = submittedDate.getTime() - eventDateApproximation.getTime();
+                            const delayDays = Math.floor(delayMillis / (1000 * 60 * 60 * 24));
+                            if (delayDays >= 0) { // Ensure delay is not negative
+                                delayYearData.push({
+                                    x: eventYear,
+                                    y: delayDays,
+                                    ...tooltipData
+                                });
+                            }
+                        }
+
+                        // 3. Narrative Len vs Year
+                        if (!isNaN(eventYear) && eventYear > 1000 && narrativeLen > 0) {
+                            narrativeLenYearData.push({
+                                x: eventYear,
+                                y: narrativeLen,
+                                ...tooltipData
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Skipping a row due to processing error:', e, row);
+                    }
+                }
+                console.log('Pre-processing finished.');
+                console.log('Altitude vs Sentiment data points:', altitudeSentimentData.length);
+                console.log('Delay vs Year data points:', delayYearData.length);
+                console.log('Narrative Len vs Year data points:', narrativeLenYearData.length);
+
+                return {
+                    altitudeSentimentData,
+                    delayYearData,
+                    narrativeLenYearData,
+                };
+            }
+
+            const preprocessed = preprocessData(rawData);
+
+            // --- Apply Cleaning and Prepare Data for Embedding ---
+            console.log('Applying cleaning functions...');
+            const SAMPLING_MAX_SIZE = 4000;
+
+            let cleanedAltitudeSentiment = removeOutliers(preprocessed.altitudeSentimentData, 'x', 'y');
+            cleanedAltitudeSentiment = reservoirSample(cleanedAltitudeSentiment, SAMPLING_MAX_SIZE);
+            console.log(`Final altitude/sentiment data size: ${cleanedAltitudeSentiment.length}`);
+
+            let cleanedDelayYear = removeOutliers(preprocessed.delayYearData, 'x', 'y');
+            cleanedDelayYear = reservoirSample(cleanedDelayYear, SAMPLING_MAX_SIZE);
+            console.log(`Final delay/year data size: ${cleanedDelayYear.length}`);
+
+            let cleanedNarrativeLenYear = removeOutliers(preprocessed.narrativeLenYearData, 'x', 'y');
+            cleanedNarrativeLenYear = reservoirSample(cleanedNarrativeLenYear, SAMPLING_MAX_SIZE);
+            console.log(`Final narrative_len/year data size: ${cleanedNarrativeLenYear.length}`);
+
+            const processedDataForPlots = {
+                altitudeSentiment: cleanedAltitudeSentiment,
+                delayYear: cleanedDelayYear,
+                narrativeLenYear: cleanedNarrativeLenYear,
+            };
+
+            // --- Embedding Processed Data ---
+            const plotDataElement = document.getElementById('plotData');
+            if (plotDataElement) {
+                plotDataElement.textContent = JSON.stringify(processedDataForPlots);
+                console.log('Processed data embedded into the page.');
+                // Check size
+                const jsonDataSize = new TextEncoder().encode(plotDataElement.textContent).length;
+                console.log(`Embedded JSON data size: ${jsonDataSize} bytes`);
+                 if (jsonDataSize > 1.8 * 1024 * 1024 * 0.8) { // Check if JSON alone is >80% of 1.8MB budget
+                    console.warn(`Warning: Embedded JSON data size (${jsonDataSize} bytes) is substantial. Total page size might exceed 1.8MB limit.`);
+                }
+            } else {
+                console.error('Could not find #plotData element to embed JSON.');
+            }
+
+
+            // --- Visualization Logic ---
+            async function renderVisualizations() {
+                console.log('Starting visualization rendering...');
+                let Plot;
+                try {
+                    Plot = await import('https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm');
+                    console.log('Observable Plot loaded successfully.');
+                } catch (e) {
+                    console.error('Error loading Observable Plot:', e);
+                    alert('Error loading plotting library. Please check console.');
+                    return;
+                }
+
+                const plotDataString = document.getElementById('plotData').textContent;
+                if (!plotDataString) {
+                    console.error('Plot data script tag is empty or not found.');
+                    return;
+                }
+                const datasets = JSON.parse(plotDataString);
+
+                // Helper: Calculate Pearson Correlation
+                function calculatePearsonCorrelation(data, xKey, yKey) {
+                    if (!data || data.length < 2) return 0;
+                    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+                    const n = data.length;
+
+                    for (const point of data) {
+                        const x = point[xKey];
+                        const y = point[yKey];
+                        if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+                            // Skip non-numeric or NaN pairs for correlation calculation
+                            // This might happen if outlier removal or sampling produces weird edge cases, though unlikely with current setup
+                            console.warn(`Skipping non-numeric data point for correlation:`, point);
+                            return NaN; // Or handle more gracefully, e.g., by filtering upfront
+                        }
+                        sumX += x;
+                        sumY += y;
+                        sumXY += x * y;
+                        sumX2 += x * x;
+                        sumY2 += y * y;
+                    }
+
+                    const numerator = n * sumXY - sumX * sumY;
+                    const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+
+                    if (denominator === 0) return 0; // Avoid division by zero
+                    return (numerator / denominator).toFixed(2);
+                }
+
+                // Helper: Render a scatter plot
+                function renderScatterPlot(targetElementId, data, xField, yField, xLabel, yLabel, title, insightFigcaptionId) {
+                    const container = document.getElementById(targetElementId);
+                    if (!container) {
+                        console.error(`Target element ${targetElementId} not found for plot.`);
+                        return;
+                    }
+                    container.innerHTML = ''; // Clear previous plot if any
+
+                    // Create and prepend the title element
+                    const titleElement = document.createElement('h3');
+                    titleElement.className = 'plot-title';
+                    titleElement.textContent = title;
+                    container.appendChild(titleElement); // Append title first
+
+                    if (!data || data.length === 0) {
+                        console.warn(`No data available for plot: ${title}`);
+                        const noDataMessage = document.createElement('p');
+                        noDataMessage.textContent = `No data available to render plot: ${title}`;
+                        container.appendChild(noDataMessage);
+                        document.getElementById(insightFigcaptionId).textContent = "Not enough data to generate an insight.";
+                        return;
+                    }
+
+                    // Adjust plot width to account for title if it affects layout significantly
+                    // For now, assume clientWidth of container is sufficient.
+                    const plot = Plot.plot({
+                        width: container.clientWidth,
+                        // marginTop: 5, // Reduced margin since title is external
+                        marginLeft: 55, // Adjusted for y-axis label space
+                        marginRight: 20,
+                        marginBottom: 45, // Adjusted for x-axis label space
+                        style: {
+                            fontSize: "14px",
+                            background: "#fff",
+                        },
+                        // No direct 'title' option for visual title here; handled by the h3 above
+                        x: {
+                            label: xLabel,
+                            labelOffset: 35,
+                            grid: false, // Gridlines off
+                            nice: true, // Human-friendly ticks
+                        },
+                        y: {
+                            label: yLabel,
+                            labelOffset: 40, // Added for y-axis label spacing
+                            grid: false, // Gridlines off
+                            nice: true, // Human-friendly ticks
+                        },
+                        marks: [
+                            Plot.dot(data, {
+                                x: xField,
+                                y: yField,
+                                r: 3, // point radius
+                                fill: "#0b7285", // point color
+                                title: d => `ID: ${d.id || 'N/A'}\nCounty: ${d.county}\nState: ${d.state}\nSeason: ${d.season}\n${xLabel}: ${typeof d.x === 'number' ? d.x.toLocaleString() : d.x}\n${yLabel}: ${typeof d.y === 'number' ? parseFloat(d.y.toFixed(2)).toLocaleString() : d.y}`
+                            })
+                        ]
+                    });
+                    container.appendChild(plot);
+
+                    // Calculate and display insight
+                    const correlation = calculatePearsonCorrelation(data, xField, yField);
+                    const figcaptionElement = document.getElementById(insightFigcaptionId);
+                    if (figcaptionElement) {
+                        if (isNaN(correlation) || correlation === null) {
+                             figcaptionElement.textContent = "Correlation could not be reliably calculated for the current data.";
+                        } else {
+                            const rho = parseFloat(correlation); // Ensure it's a number for comparisons
+                            let strength = "very weak or no";
+                            const absRho = Math.abs(rho);
+
+                            if (absRho >= 0.7) strength = "strong";
+                            else if (absRho >= 0.4) strength = "moderate";
+                            else if (absRho >= 0.1) strength = "weak";
+
+                            let direction = "relationship";
+                            if (rho > 0.05) direction = "positive relationship"; // Using a small threshold to avoid "positive" for near-zero
+                            else if (rho < -0.05) direction = "negative relationship";
+
+                            if (strength === "very weak or no" || direction === "relationship") {
+                                figcaptionElement.textContent = `There appears to be a ${strength.toLowerCase()} linear ${direction.toLowerCase()} between ${yLabel.toLowerCase()} and ${xLabel.toLowerCase()} (ρ = ${rho.toFixed(2)}).`;
+                            } else {
+                                figcaptionElement.textContent = `${yLabel} and ${xLabel.toLowerCase()} show a ${strength.toLowerCase()} ${direction.toLowerCase()} (ρ = ${rho.toFixed(2)}).`;
+                            }
+                        }
+                    }
+                }
+
+                // Render the plots
+                renderScatterPlot(
+                    'altitudeSentimentPlot',
+                    datasets.altitudeSentiment,
+                    'x', 'y',
+                    'Elevation (m)', 'Vader Sentiment',
+                    'Altitude vs Sentiment',
+                    'altitudeSentimentCaption'
+                );
+
+                renderScatterPlot(
+                    'delayYearPlot',
+                    datasets.delayYear,
+                    'x', 'y',
+                    'Event Year', 'Reporting Delay (days)',
+                    'Delay vs Year',
+                    'delayYearCaption'
+                );
+
+                renderScatterPlot(
+                    'narrativeLenYearPlot',
+                    datasets.narrativeLenYear,
+                    'x', 'y',
+                    'Event Year', 'Narrative Length (chars)',
+                    'Narrative Length vs Year',
+                    'narrativeLenYearCaption'
+                );
+                console.log('Visualization rendering finished.');
+            }
+
+            // Call rendering function after data processing
+            renderVisualizations().catch(err => {
+                console.error("Error during visualization rendering:", err);
+                // Display error to user if something goes wrong in the async rendering part
+                document.body.insertAdjacentHTML('beforeend', `<p style="color:red;">Critical error during plot rendering: ${err.message}</p>`);
+            });
+
+            console.log('Data processing and embedding finished. Visualization call queued.');
+        });
+    </script>
+</body>
+</html>
