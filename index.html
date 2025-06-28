@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bigfoot, Unpacked — 12 Data Stories</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-regression@1.3.10/dist/d3-regression.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-cloud@1.2.7/build/d3.layout.cloud.js"></script>
+
+    <style>
+        :root {
+            --font-heading: 'Playfair Display', serif;
+            --font-body: 'Source Sans Pro', sans-serif;
+            --color-charcoal: #111;
+            --color-mid-gray: #666;
+            --color-accent-teal: #1E6F78;
+            --color-highlight-orange: #E4572E;
+            --color-soft-backdrop: #F9F9F7;
+            --color-hairline: #e2e2e2;
+        }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--color-charcoal);
+            background-color: var(--color-soft-backdrop);
+            margin: 0;
+            padding: 0;
+            line-height: 1.4;
+            font-size: 17px;
+        }
+
+        header {
+            max-width: 680px;
+            margin: 2rem auto 1rem;
+            padding: 0 1rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: var(--font-heading);
+            font-size: 48px; /* Larger for main title */
+            color: var(--color-charcoal);
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: var(--color-mid-gray);
+            margin-top: 0;
+        }
+
+        main {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .story {
+            margin-bottom: 4rem; /* Space between stories */
+        }
+
+        .story h2 {
+            font-family: var(--font-heading);
+            font-size: 28px;
+            color: var(--color-charcoal); /* Or var(--color-accent-teal) for emphasis */
+            border-bottom: 1px solid var(--color-hairline);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .story .intro {
+            font-size: 17px;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+            max-width: 680px; /* Already constrained by main, but good practice */
+        }
+
+        .story .description { /* For accessible descriptions */
+            padding: 0.5rem;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            margin-top: 1rem;
+            font-size: 0.9em;
+        }
+
+        svg {
+            width: 100%;
+            height: auto; /* For basic responsiveness, will be controlled by D3 */
+            display: block;
+            margin: 1rem 0;
+            background-color: #fff; /* Temporary background to see SVGs */
+            border: 1px solid var(--color-hairline); /* To see boundaries */
+        }
+
+        /* Focus styles for accessibility */
+        svg:focus, .story [tabindex="0"]:focus {
+            outline: 2px solid var(--color-highlight-orange);
+            outline-offset: 2px;
+        }
+
+        .tooltip {
+            opacity: 0;
+            position: absolute;
+            text-align: left; /* Usually better for tooltips with key-value pairs */
+            padding: 0.5rem;
+            background: var(--color-charcoal);
+            color: var(--color-soft-backdrop);
+            border: 0px;
+            border-radius: 4px;
+            pointer-events: none; /* Crucial for hover events on underlying elements */
+            font-size: 0.9em;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            transition: opacity 150ms ease-in-out;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem 1rem;
+            background-color: #e8e8e8; /* Light-gray bar */
+            color: var(--color-mid-gray);
+            font-size: 0.9em;
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: var(--color-accent-teal);
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Basic chart styling placeholders (will be refined in JS/D3) */
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: var(--color-charcoal);
+            shape-rendering: crispEdges;
+        }
+        .axis text {
+            font-family: var(--font-body);
+            font-size: 12px;
+            fill: var(--color-mid-gray);
+        }
+        .grid line {
+            stroke: var(--color-hairline);
+            stroke-opacity: 0.7;
+            shape-rendering: crispEdges;
+        }
+        .grid path { /* Hide domain for grid */
+            stroke-width: 0;
+        }
+
+        /* Responsive text for smaller screens */
+        @media (max-width: 600px) {
+            h1 { font-size: 36px; }
+            .story h2 { font-size: 24px; }
+            body, .story .intro { font-size: 16px; }
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Bigfoot, Unpacked</h1>
+        <p class="subtitle">12 Data Stories</p>
+    </header>
+
+    <main id="main-content">
+        <!-- Story 1: Summer Surge? -->
+        <section class="story" id="story1">
+            <h2>1. Summer Surge?</h2>
+            <div class="intro">Intro text for Summer Surge. Monthly sightings often peak in summer, but how pronounced is this "Bigfoot season"? We look at overall monthly counts and seasonal distributions.</div>
+            <svg id="chart1" role="img" aria-labelledby="chart1-title chart1-desc" tabindex="0">
+                <title id="chart1-title">Summer Surge Chart</title>
+                <desc id="chart1-desc">A line and bar chart showing Bigfoot sightings per month and season.</desc>
+            </svg>
+            <div class="description" id="desc1" hidden>Detailed description for chart 1 for screen readers or expanded view.</div>
+        </section>
+
+        <!-- Story 2: Night vs Day -->
+        <section class="story" id="story2">
+            <h2>2. Night vs Day</h2>
+            <div class="intro">Intro text for Night vs Day. Are these creatures of the night? We analyze sighting times to see if Bigfoot is more often reported during nocturnal hours.</div>
+            <svg id="chart2" role="img" aria-labelledby="chart2-title chart2-desc" tabindex="0">
+                <title id="chart2-title">Night vs Day Chart</title>
+                <desc id="chart2-desc">A pie chart illustrating the proportion of Bigfoot sightings reported during the day versus at night.</desc>
+            </svg>
+            <div class="description" id="desc2" hidden>Detailed description for chart 2.</div>
+        </section>
+
+        <!-- Story 3: Bigfoot & Hollywood -->
+        <section class="story" id="story3">
+            <h2>3. Bigfoot & Hollywood</h2>
+            <div class="intro">Intro text for Bigfoot & Hollywood. Does pop culture influence sightings? This timeline tracks reported sightings against major Bigfoot movie releases.</div>
+            <svg id="chart3" role="img" aria-labelledby="chart3-title chart3-desc" tabindex="0">
+                <title id="chart3-title">Bigfoot & Hollywood Chart</title>
+                <desc id="chart3-desc">A timeline chart showing monthly Bigfoot sightings with markers for movie releases.</desc>
+            </svg>
+            <div class="description" id="desc3" hidden>Detailed description for chart 3.</div>
+        </section>
+
+        <!-- Story 4: Solo or Crowd? -->
+        <section class="story" id="story4">
+            <h2>4. Solo or Crowd?</h2>
+            <div class="intro">Intro text for Solo or Crowd? Are sightings typically of lone individuals or groups? We explore witness accounts and sighting classifications (Class A/B/C).</div>
+            <svg id="chart4" role="img" aria-labelledby="chart4-title chart4-desc" tabindex="0">
+                <title id="chart4-title">Solo or Crowd Chart</title>
+                <desc id="chart4-desc">Stacked bar chart showing witness group size versus sighting classification.</desc>
+            </svg>
+            <div class="description" id="desc4" hidden>Detailed description for chart 4.</div>
+        </section>
+
+        <!-- Story 5: Habitat Verbs -->
+        <section class="story" id="story5">
+            <h2>5. Habitat Verbs</h2>
+            <div class="intro">Intro text for Habitat Verbs. What actions are reported in different environments? A network graph connects habitats to the most common verbs used in sighting descriptions.</div>
+            <svg id="chart5" role="img" aria-labelledby="chart5-title chart5-desc" tabindex="0">
+                <title id="chart5-title">Habitat Verbs Chart</title>
+                <desc id="chart5-desc">Force-directed network graph of environments and associated verbs.</desc>
+            </svg>
+            <div class="description" id="desc5" hidden>Detailed description for chart 5.</div>
+        </section>
+
+        <!-- Story 6: Words of the Seasons -->
+        <section class="story" id="story6">
+            <h2>6. Words of the Seasons</h2>
+            <div class="intro">Intro text for Words of the Seasons. Do the words used to describe sightings change with the seasons? Four word clouds illustrate the most frequent terms for each season.</div>
+            <svg id="chart6" role="img" aria-labelledby="chart6-title chart6-desc" tabindex="0">
+                <title id="chart6-title">Words of the Seasons Chart</title>
+                <desc id="chart6-desc">Four word clouds showing frequent words for each season.</desc>
+            </svg>
+            <div class="description" id="desc6" hidden>Detailed description for chart 6.</div>
+        </section>
+
+        <!-- Story 7: Thin Air, Thin Nerves -->
+        <section class="story" id="story7">
+            <h2>7. Thin Air, Thin Nerves</h2>
+            <div class="intro">Intro text for Thin Air, Thin Nerves. Is there a correlation between altitude and the sentiment of sighting reports? This scatter plot explores the relationship.</div>
+            <svg id="chart7" role="img" aria-labelledby="chart7-title chart7-desc" tabindex="0">
+                <title id="chart7-title">Altitude vs Sentiment Chart</title>
+                <desc id="chart7-desc">Scatter plot of sighting altitude versus sentiment score, with a LOESS curve.</desc>
+            </svg>
+            <div class="description" id="desc7" hidden>Detailed description for chart 7.</div>
+        </section>
+
+        <!-- Story 8: Road-side Rumbles -->
+        <section class="story" id="story8">
+            <h2>8. Road-side Rumbles</h2>
+            <div class="intro">Intro text for Road-side Rumbles. How quickly are sightings near different types of roads reported? Box plots show reporting delay by road category.</div>
+            <svg id="chart8" role="img" aria-labelledby="chart8-title chart8-desc" tabindex="0">
+                <title id="chart8-title">Road-side Rumbles Chart</title>
+                <desc id="chart8-desc">Box plot of reporting delay by road type.</desc>
+            </svg>
+            <div class="description" id="desc8" hidden>Detailed description for chart 8.</div>
+        </section>
+
+        <!-- Story 9: The Gender of Bigfoot -->
+        <section class="story" id="story9">
+            <h2>9. The Gender of Bigfoot</h2>
+            <div class="intro">Intro text for The Gender of Bigfoot. How is Bigfoot's gender typically perceived? A donut chart shows the share of dominant pronouns used in reports.</div>
+            <svg id="chart9" role="img" aria-labelledby="chart9-title chart9-desc" tabindex="0">
+                <title id="chart9-title">Gender of Bigfoot Chart</title>
+                <desc id="chart9-desc">Donut chart of pronoun share in sighting reports.</desc>
+            </svg>
+            <div class="description" id="desc9" hidden>Detailed description for chart 9.</div>
+        </section>
+
+        <!-- Story 10: Online Storytelling Shift -->
+        <section class="story" id="story10">
+            <h2>10. Online Storytelling Shift</h2>
+            <div class="intro">Intro text for Online Storytelling Shift. Has the internet era changed how Bigfoot stories are told? We compare sighting classifications and narrative lengths pre- and post-internet.</div>
+            <svg id="chart10" role="img" aria-labelledby="chart10-title chart10-desc" tabindex="0">
+                <title id="chart10-title">Online Storytelling Shift Chart</title>
+                <desc id="chart10-desc">Split panel chart: stacked bars for class distribution and violin plots for narrative length, pre/post internet.</desc>
+            </svg>
+            <div class="description" id="desc10" hidden>Detailed description for chart 10.</div>
+        </section>
+
+        <!-- Story 11: Weather Whispers -->
+        <section class="story" id="story11">
+            <h2>11. Weather Whispers</h2>
+            <div class="intro">Intro text for Weather Whispers. What's the weather like when Bigfoot is reportedly seen? A heatmap shows the frequency of weather terms across seasons.</div>
+            <svg id="chart11" role="img" aria-labelledby="chart11-title chart11-desc" tabindex="0">
+                <title id="chart11-title">Weather Whispers Chart</title>
+                <desc id="chart11-desc">Heatmap of weather terms by season.</desc>
+            </svg>
+            <div class="description" id="desc11" hidden>Detailed description for chart 11.</div>
+        </section>
+
+        <!-- Story 12: Where It Lurks -->
+        <section class="story" id="story12">
+            <h2>12. Where It Lurks</h2>
+            <div class="intro">Intro text for Where It Lurks. Mapping reported sightings per capita across US counties to reveal potential hotspots.</div>
+            <svg id="chart12" role="img" aria-labelledby="chart12-title chart12-desc" tabindex="0">
+                <title id="chart12-title">Where It Lurks Chart</title>
+                <desc id="chart12-desc">Choropleth map of US county sightings per 100k population.</desc>
+            </svg>
+            <div class="description" id="desc12" hidden>Detailed description for chart 12.</div>
+        </section>
+    </main>
+
+    <div class="tooltip" id="tooltip" style="opacity:0; position:absolute; text-align:center; padding:0.5rem; background:#fff; border:1px solid #ccc; border-radius:4px; pointer-events:none;"></div>
+
+    <footer>
+        <p>Data analysis and visualization by a NYT Data Graphics Engineer for AIDE. | Data Source: <a href="[Placeholder: Link to BFRO or data source]" target="_blank">BFRO Reports (Processed)</a></p>
+    </footer>
+
+    <script type="module">
+        console.log("D3 version:", d3.version);
+        if (d3.layout && d3.layout.cloud) { console.log("d3-cloud loaded."); }
+        else { console.warn("d3-cloud may not be loaded on d3.layout with D3 v7. It's often used as d3.cloud(). Will verify in Story 6."); }
+        if (d3.regressionLowess) { console.log("d3-regression loaded."); }
+        else { console.error("d3-regression not loaded."); }
+
+        // --- Global Variables & Configuration ---
+        let pointsData = null;
+        let aggData = null;
+        const tooltip = d3.select("#tooltip");
+
+        const chartSettings = {
+            margin: { top: 30, right: 30, bottom: 70, left: 60 }, // Default margin
+        };
+
+        const NYT_PALETTE = {
+            charcoal: "#111111",
+            midGray: "#666666",
+            accentTeal: "#1E6F78",
+            highlightOrange: "#E4572E",
+            softBackdrop: "#F9F9F7",
+            hairline: "#e2e2e2"
+        };
+
+
+        // --- Data Loading ---
+        async function loadData() {
+            try {
+                pointsData = await d3.json("points.json");
+                aggData = await d3.json("agg.json");
+                console.log("Data loaded successfully");
+                // console.log("Agg Data Sample:", Object.keys(aggData).length > 0 ? aggData : "AggData is empty");
+                initializeCharts();
+            } catch (error) {
+                console.error("Error loading data:", error);
+                d3.select("main").insert("p", ":first-child")
+                    .style("color", "red")
+                    .style("text-align", "center")
+                    .text("Error loading data. Please ensure points.json and agg.json are available and correctly formatted.");
+            }
+        }
+
+        // --- Tooltip Functions ---
+        function showTooltip(event, content) {
+            tooltip.transition().duration(150).style("opacity", 0.9);
+            tooltip.html(content)
+                .style("left", (event.pageX + 15) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        }
+
+        function moveTooltip(event) {
+            tooltip.style("left", (event.pageX + 15) + "px")
+                   .style("top", (event.pageY - 28) + "px");
+        }
+
+        function hideTooltip() {
+            tooltip.transition().duration(150).style("opacity", 0);
+        }
+
+        // --- Accessibility ---
+        function toggleDescription(chartNum) {
+            const descDiv = document.getElementById(`desc${chartNum}`);
+            if (descDiv) {
+                descDiv.hidden = !descDiv.hidden;
+                if (!descDiv.hidden) descDiv.focus();
+            }
+        }
+        window.toggleDescription = toggleDescription; // Make accessible for event attributes if needed
+
+        // Attach keyboard listeners to SVGs
+        d3.selectAll("svg[role='img']").each(function() {
+            const chartIdNum = this.id.replace("chart", "");
+            d3.select(this).on("keydown", function(event) {
+                if (event.key === "Enter") {
+                    toggleDescription(chartIdNum);
+                }
+            });
+        });
+
+
+        // --- Resize Handling ---
+        function redrawAllCharts() {
+            console.log("Window resized. Redrawing charts...");
+            drawStory1Chart();
+            drawStory2Chart();
+            drawStory3Chart();
+            drawStory4Chart();
+            drawStory5Chart();
+            drawStory6Chart();
+            // Call other drawStoryXChart functions here as they are implemented
+        }
+
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(redrawAllCharts, 250);
+        });
+
+        // --- Chart Initialization ---
+        function initializeCharts() {
+            if (!pointsData || !aggData) {
+                console.error("Data not available for chart initialization.");
+                return;
+            }
+            console.log("Initializing charts...");
+            redrawAllCharts(); // Initial draw
+        }
+
+        // --- Story-Specific Drawing Functions ---
+
+        // Story 1: Summer Surge?
+        function drawStory1Chart() {
+            console.log("drawStory1Chart called"); // For resize testing
+            const chartData = {
+                month_counts: aggData ? aggData.month_counts : {},
+                season_counts: aggData ? aggData.season_counts : {}
+            };
+             const config = {
+                margin: { ...chartSettings.margin, bottom: 70, left: 70 }, // Specific needs for this chart
+                title: "Bigfoot Sightings by Month",
+                color: NYT_PALETTE.accentTeal
+            };
+            renderLineAreaChart("#chart1", chartData, config);
+        }
+
+        // Story 2: Night vs Day
+        function drawStory2Chart() {
+            const rawDayNightData = aggData ? aggData.day_night_counts : {};
+            const pieData = Object.entries(rawDayNightData).map(([key, value]) => ({ name: key, value: value }));
+
+            const config = {
+                 margin: { top: 40, right: 20, bottom: 20, left: 20 }, // More top margin for title
+                 title: "Sightings: Night vs Day",
+                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange] // Example specific colors
+            };
+            renderPieChart("#chart2", pieData, config);
+        }
+
+        // Story 3: Bigfoot & Hollywood (Timeline)
+        function drawStory3Chart() {
+            const timelineData = {
+                month_counts: aggData ? aggData.media_timeline_monthly : {},
+                releases: aggData ? aggData.media_timeline_releases : {}
+            };
+             const config = {
+                margin: { ...chartSettings.margin, bottom: 70, left: 70 },
+                title: "Monthly Sightings & Hollywood Releases",
+                color: NYT_PALETTE.accentTeal
+            };
+            renderLineAreaChart("#chart3", { month_counts: timelineData.month_counts }, config);
+        }
+
+        // Story 4: Solo or Crowd?
+        function drawStory4Chart() {
+            const chartData = aggData ? aggData.witness_class_crosstab : {};
+            const config = {
+                margin: { ...chartSettings.margin, bottom: 70, left: 70 },
+                title: "Witness Group vs. Sighting Class"
+            };
+            renderStackedBarChart("#chart4", chartData, config);
+        }
+
+        // Story 5: Habitat Verbs
+        function drawStory5Chart() {
+            const chartData = aggData ? aggData.environment_verb_edges : [];
+            const config = {
+                margin: { top: 10, right: 10, bottom: 10, left: 10 },
+                title: "Environment-Verb Network"
+            };
+            renderForceNetwork("#chart5", chartData, config);
+        }
+
+        // Story 6: Words of the Seasons
+        function drawStory6Chart() {
+            const chartData = aggData ? aggData.season_word_freq : {};
+             const config = {
+                margin: { top: 10, right: 10, bottom: 10, left: 10 },
+                // Title might be per cloud or overall. Handled inside renderWordCloud
+            };
+            renderWordCloud("#chart6", chartData, config);
+        }
+
+
+        // --- Reusable Chart Helper Functions ---
+        function getChartDimensions(svgElement, margin, aspectRatio = 0.6) {
+            const containerWidth = svgElement.node().parentNode.getBoundingClientRect().width;
+            const svgWidth = Math.max(300, containerWidth);
+            const svgHeight = svgWidth * aspectRatio;
+
+            svgElement.attr("width", svgWidth).attr("height", svgHeight);
+            // No viewBox needed if width/height explicitly set and responsive CSS handles container.
+            // Or, if using viewBox for scaling:
+            // svgElement.attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+
+
+            const boundedWidth = svgWidth - margin.left - margin.right;
+            const boundedHeight = svgHeight - margin.top - margin.bottom;
+            return { svgWidth, svgHeight, boundedWidth, boundedHeight };
+        }
+
+        function renderLineAreaChart(svgSelector, data, config) {
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.5);
+
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            if (!data || !data.month_counts || Object.keys(data.month_counts).length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+                return;
+            }
+
+            const monthData = Object.entries(data.month_counts)
+                                .map(([month, count]) => ({ month: +month, count: +count }))
+                                .sort((a,b) => a.month - b.month);
+
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+            const xScale = d3.scaleBand()
+                .domain(monthData.map(d => monthNames[d.month - 1]))
+                .range([0, boundedWidth])
+                .padding(0.1);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(monthData, d => d.count) || 1])
+                .nice()
+                .range([boundedHeight, 0]);
+
+            // X Axis
+            g.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${boundedHeight})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)");
+
+            // Y Axis
+            g.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
+
+            // Gridlines (horizontal)
+            g.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
+
+            // Bars (for month_counts)
+            g.selectAll(".bar")
+                .data(monthData)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => xScale(monthNames[d.month - 1]))
+                .attr("y", d => yScale(d.count))
+                .attr("width", xScale.bandwidth())
+                .attr("height", d => boundedHeight - yScale(d.count))
+                .attr("fill", config.color || NYT_PALETTE.accentTeal)
+                .on("mouseover", function(event, d) {
+                    d3.select(this).transition().duration(50).attr("opacity", 0.7);
+                    showTooltip(event, `${monthNames[d.month-1]}: ${d.count} sightings`);
+                })
+                .on("mousemove", moveTooltip)
+                .on("mouseout", function(event, d) {
+                    d3.select(this).transition().duration(50).attr("opacity", 1);
+                    hideTooltip();
+                });
+
+            // Chart Title
+            svg.append("text")
+                .attr("x", (margin.left + boundedWidth / 2))
+                .attr("y", margin.top / 2 + 5)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title || "Chart Title");
+        }
+
+        function renderPieChart(svgSelector, data, config) {
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+
+            const margin = config.margin || chartSettings.margin;
+            // Pie chart aspect ratio often 1:1 for the circle itself, SVG can be wider for labels/title
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, 0.8);
+
+            const radius = Math.min(boundedWidth, boundedHeight) / 2 * 0.8; // Smaller radius for labels
+            const g = svg.append("g").attr("transform", `translate(${svgWidth / 2},${svgHeight / 2})`); // Center the pie
+
+            if (!data || data.length === 0) {
+                 g.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").text("No data for chart.");
+                return;
+            }
+
+            const color = d3.scaleOrdinal(config.colors || [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray])
+                            .domain(data.map(d => d.name));
+
+            const pie = d3.pie().value(d => d.value).sort(null);
+            const arcGenerator = d3.arc().innerRadius(config.isDonut ? radius * 0.6 : 0).outerRadius(radius);
+
+            const arcs = g.selectAll(".arc")
+                .data(pie(data))
+                .enter().append("g")
+                .attr("class", "arc");
+
+            arcs.append("path")
+                .attr("d", arcGenerator)
+                .attr("fill", d => color(d.data.name))
+                .attr("stroke", NYT_PALETTE.softBackdrop) // Add a slight border between slices
+                .style("stroke-width", "2px")
+                .on("mouseover", function(event, d) {
+                    d3.select(this).transition().duration(50).attr("opacity", 0.8);
+                    showTooltip(event, `${d.data.name}: ${d.data.value} (${(d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1)}%)`);
+                })
+                .on("mousemove", moveTooltip)
+                .on("mouseout", function(event, d) {
+                    d3.select(this).transition().duration(50).attr("opacity", 1);
+                    hideTooltip();
+                });
+
+            // Add labels
+            arcs.append("text")
+                .attr("transform", d => {
+                    const pos = arcGenerator.centroid(d);
+                    // Make sure labels are outside for small slices
+                    const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    pos[0] = radius * 0.95 * (midangle < Math.PI ? 1 : -1);
+                    return `translate(${pos})`;
+                })
+                .attr("dy", "0.35em")
+                .style("text-anchor", d => {
+                    const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    return (midangle < Math.PI ? "start" : "end");
+                })
+                .text(d => `${d.data.name} (${(d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1)}%)`)
+                .style("font-size", "11px")
+                .style("fill", NYT_PALETTE.charcoal);
+
+            svg.append("text")
+                .attr("x", (svgWidth / 2))
+                .attr("y", margin.top ) // Place title within top margin
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title || "Chart Title");
+        }
+
+        function renderStackedBarChart(svgSelector, data, config) {
+            console.log(`Rendering StackedBarChart for ${svgSelector}`, { data, config });
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            if (!data || Object.keys(data).length === 0 || Object.values(data).every(d => Object.keys(d).length === 0) ) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for stacked bar chart.");
+                return;
+            }
+
+            // Data transformation for d3.stack
+            // Expected input `data`: {"false": {"Class A": 10, ...}, "true": {"Class A": 5, ...}}
+            // Output for stack: [{ witness_grp: "Solo", "Class A": 10, "Class B": ..., "Class C": ...}, ...]
+            const classes = ['Class A', 'Class B', 'Class C']; // Define order
+            const transformedData = Object.entries(data).map(([witnessGrpKey, classCounts]) => {
+                const entry = { witness_grp: witnessGrpKey === 'true' ? 'Group' : 'Solo' };
+                classes.forEach(cls => {
+                    entry[cls] = classCounts[cls] || 0;
+                });
+                return entry;
+            });
+
+            const stack = d3.stack().keys(classes);
+            const series = stack(transformedData);
+
+            const xScale = d3.scaleBand()
+                .domain(transformedData.map(d => d.witness_grp))
+                .range([0, boundedWidth])
+                .padding(0.2);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(series, d => d3.max(d, s => s[1])) || 1]) // Max of the top of the stacks
+                .nice()
+                .range([boundedHeight, 0]);
+
+            const color = d3.scaleOrdinal()
+                .domain(classes)
+                .range([NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray]); // Example colors
+
+            // Axes
+            g.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${boundedHeight})`)
+                .call(d3.axisBottom(xScale));
+
+            g.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
+
+            // Gridlines
+            g.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
+
+            // Bars
+            const groups = g.selectAll(".bargroup")
+                .data(series)
+                .enter().append("g")
+                .attr("class", "bargroup")
+                .attr("fill", d => color(d.key));
+
+            groups.selectAll("rect")
+                .data(d => d)
+                .enter().append("rect")
+                .attr("x", d => xScale(d.data.witness_grp))
+                .attr("y", d => yScale(d[1]))
+                .attr("height", d => yScale(d[0]) - yScale(d[1]))
+                .attr("width", xScale.bandwidth())
+                .on("mouseover", function(event, d) {
+                    const seriesData = d3.select(this.parentNode).datum(); // Get the series data (e.g., "Class A")
+                    showTooltip(event, `${seriesData.key}<br>${d.data.witness_grp}: ${d.data[seriesData.key]}`);
+                })
+                .on("mousemove", moveTooltip)
+                .on("mouseout", hideTooltip);
+
+            // Legend (basic)
+            const legend = svg.selectAll(".legend")
+                .data(classes.slice().reverse()) // To match typical legend order
+                .enter().append("g")
+                .attr("class", "legend")
+                .attr("transform", (d, i) => `translate(0,${i * 20})`);
+
+            legend.append("rect")
+                .attr("x", boundedWidth + margin.left + 10) // Position legend to the right
+                .attr("y", margin.top)
+                .attr("width", 18)
+                .attr("height", 18)
+                .style("fill", color);
+
+            legend.append("text")
+                .attr("x", boundedWidth + margin.left + 35)
+                .attr("y", margin.top + 9)
+                .attr("dy", ".35em")
+                .style("text-anchor", "start")
+                .text(d => d);
+
+            // Chart Title
+            svg.append("text")
+                .attr("x", (margin.left + boundedWidth / 2))
+                .attr("y", margin.top / 2 + 5)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title || "Chart Title");
+        }
+
+        function renderForceNetwork(svgSelector, data, config) {
+            console.log(`Rendering ForceNetwork for ${svgSelector}`, { data, config });
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            if (!data || data.length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for force network.");
+                return;
+            }
+            // Basic placeholder: just list nodes
+            g.append("text").attr("x", 10).attr("y", 20).text(`Force Network: ${data.length} edges. Implementation TBD.`);
+            // TODO: Full D3 force simulation implementation
+        }
+
+        function renderWordCloud(svgSelector, data, config) {
+            // data is expected to be: { season1: [{text: "word1", size: 10}, ...], season2: [...] }
+            // For Story 6, this will be called multiple times or adapted for a grid.
+            console.log(`Rendering WordCloud for ${svgSelector}`);
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            // For a single word cloud, aspect ratio might be closer to 1. If used for a grid, this will be different.
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, 0.8);
+
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            if (!data || Object.keys(data).length === 0 || !Object.values(data).some(seasonWords => seasonWords && seasonWords.length > 0) ) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for word clouds.");
+                return;
+            }
+
+            // This is a placeholder for a single word cloud if data was just one season's words
+            // For Story 6, the drawStory6Chart function will need to handle the 2x2 grid layout.
+            g.append("text").attr("x", 10).attr("y", 20).text("WordCloud Area Placeholder. Grid TBD.");
+
+            // Actual d3.layout.cloud logic will go here.
+            // Example check:
+            if (typeof d3.layout !== "undefined" && typeof d3.layout.cloud !== "undefined") {
+                console.log("d3.layout.cloud is available for WordCloud!");
+            } else {
+                g.append("text").attr("x", 10).attr("y", 40).text("d3.layout.cloud not found!").style("fill", "red");
+                console.error('d3.layout.cloud is not available. Check CDN and D3 version compatibility.');
+            }
+        }
+
+        function renderScatterPlot(svgSelector, data, config) { // Will adapt for LOESS
+            console.log(`Rendering ScatterPlot for ${svgSelector}`, { data, config });
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            g.append("text").attr("x", 10).attr("y", 20).text("ScatterPlot Placeholder");
+             if (!data || data.length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+                return;
+            }
+        }
+
+        function renderBoxPlot(svgSelector, data, config) {
+            console.log(`Rendering BoxPlot for ${svgSelector}`, { data, config });
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            g.append("text").attr("x", 10).attr("y", 20).text("BoxPlot Placeholder");
+             if (Object.keys(data || {}).length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+                return;
+            }
+        }
+
+        function renderViolinPlot(svgSelector, data, config) {
+            console.log(`Rendering ViolinPlot for ${svgSelector}`, { data, config });
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            g.append("text").attr("x", 10).attr("y", 20).text("ViolinPlot Placeholder");
+             if (Object.keys(data || {}).length === 0) { // Data is likely {pre_internet: {}, post_internet: {}}
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+                return;
+            }
+        }
+
+        function renderHeatmap(svgSelector, data, config) {
+            console.log(`Rendering Heatmap for ${svgSelector}`, { data, config });
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            g.append("text").attr("x", 10).attr("y", 20).text("Heatmap Placeholder");
+             if (Object.keys(data || {}).length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+                return;
+            }
+        }
+
+        async function renderChoroplethMap(svgSelector, geoDataUrl, valueData, config) {
+            console.log(`Rendering ChoroplethMap for ${svgSelector}`); // Removed data from log for brevity
+            const svg = d3.select(svgSelector);
+            svg.selectAll("*").remove();
+            const margin = config.margin || chartSettings.margin;
+            const { boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, 0.6); // Map aspect ratio
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            g.append("text").attr("x", 10).attr("y", 20).text("Choropleth Placeholder");
+            if (!valueData || valueData.length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No sighting data for map.");
+                return;
+            }
+            // const geojson = await d3.json(geoDataUrl);
+            // Further implementation...
+        }
+
+        window.renderFunctions = {
+            renderLineAreaChart, renderPieChart, renderStackedBarChart, renderForceNetwork,
+            renderWordCloud, renderScatterPlot, renderBoxPlot, renderViolinPlot,
+            renderHeatmap, renderChoroplethMap, getChartDimensions
+        };
+
+        // --- Start data loading ---
+        // Updated loadData to call initializeCharts
+        async function loadData() {
+            try {
+                pointsData = await d3.json("points.json");
+                aggData = await d3.json("agg.json");
+                console.log("Data loaded successfully");
+                // console.log("Agg Data Sample:", Object.keys(aggData).length > 0 ? aggData : "AggData is empty");
+                initializeCharts(); // Call initializeCharts after data is loaded
+            } catch (error) {
+                console.error("Error loading data:", error);
+                d3.select("main").insert("p", ":first-child")
+                    .style("color", "red")
+                    .style("text-align", "center")
+                    .text("Error loading data. Please ensure points.json and agg.json are available and correctly formatted.");
+            }
+        }
+        loadData();
+
+    </script>
+</body>
+</html>
