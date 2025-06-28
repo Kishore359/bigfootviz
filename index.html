@@ -340,10 +340,13 @@
                 "Fall": [{text:"leaves", size:23}, {text:"dark", size:20}, {text:"october", size:17}],
                 "Winter": [{text:"snow", size:18}, {text:"cold", size:15}, {text:"night", size:12}]
             },
-            altitude_sentiment_scatter: [[100, 0.2], [500, -0.1], [1200, 0.5], [300, 0.0], [800, -0.3]],
+            altitude_sentiment_scatter: Array.from({length: 200}, () => [Math.random() * 2000, Math.random() * 2 - 1]),
             delay_road_type_summary: {
                 "Interstate": {"min":1, "q1":5, "median":10, "q3":30, "max":100, "count":50},
-                "Hwy": {"min":0, "q1":3, "median":7, "q3":25, "max":90, "count":60}
+                "Hwy": {"min":0, "q1":3, "median":7, "q3":25, "max":90, "count":60},
+                "State": {"min":2, "q1":8, "median":15, "q3":40, "max":120, "count":40},
+                "County": {"min":0, "q1":4, "median":9, "q3":20, "max":80, "count":70},
+                "Local": {"min":1, "q1":6, "median":12, "q3":35, "max":110, "count":55}
             },
             pronoun_counts: {"he": 50, "it": 150, "she": 20},
             pre_post_internet: {
@@ -352,21 +355,25 @@
                     "post_internet": {"Class A": 120, "Class B": 180, "Class C": 60}
                 },
                 narr_len_summary: {
-                    "pre_internet": {"min":50, "q1":150, "median":300, "q3":600, "max":2000, "count": 300, "values": Array.from({length: 50}, () => Math.random() * 1950 + 50)},
-                    "post_internet": {"min":80, "q1":200, "median":400, "q3":800, "max":3000, "count": 450, "values": Array.from({length: 50}, () => Math.random() * 2920 + 80)}
+                    "pre_internet": { "values": Array.from({length: 50}, () => Math.random() * 1950 + 50) },
+                    "post_internet": { "values": Array.from({length: 50}, () => Math.random() * 2920 + 80) }
                 }
             },
             season_weather_matrix: {
-                "Spring": {"clear": 50, "rain": 20, "cloud": 30},
-                "Summer": {"sunny": 80, "clear": 40, "cloud": 10},
-                "Fall": {"cloud": 40, "rain": 30, "wind": 20},
-                "Winter": {"snow": 30, "cloud": 20, "fog": 10}
+                "Spring": {"clear": 50, "rain": 20, "cloud": 30, "wind": 5, "fog": 2, "snow":0, "sunny":15},
+                "Summer": {"sunny": 80, "clear": 40, "cloud": 10, "rain": 5, "wind": 2, "fog":0, "snow":0},
+                "Fall": {"cloud": 40, "rain": 30, "wind": 20, "clear": 15, "fog": 5, "sunny":10, "snow":0},
+                "Winter": {"snow": 30, "cloud": 20, "fog": 10, "clear": 5, "wind": 10, "rain":2, "sunny":0}
             },
             county_sightings_population: [
                 { county_fips: "01001", sightings: 5, pop_2020: 56145, name: "Autauga County" },
                 { county_fips: "06037", sightings: 20, pop_2020: 9943046, name: "Los Angeles County" }
             ]
         };
+        const mockPointsData = Array.from({length: 200}, (_,i) => ({
+            derived_elev: Math.random() * 2000,
+            derived_sent: Math.random() * 2 - 1,
+        }));
 
         // --- Data Loading ---
         async function loadData() {
@@ -375,16 +382,33 @@
                 let aggError = false;
                 try {
                     pointsData = await d3.json("points.json");
+                    if (!pointsData || pointsData.length === 0) {
+                        console.warn("points.json is empty or not found. Using mock points data.");
+                        pointsData = mockPointsData;
+                    }
                 } catch(e) {
-                    console.warn("Could not load points.json, using empty array. Error:", e);
-                    pointsData = [];
+                    console.warn("Could not load points.json, using mock points data. Error:", e);
+                    pointsData = mockPointsData;
                     pointsError = true;
                 }
                 try {
                     aggData = await d3.json("agg.json");
+                    if (!aggData || Object.keys(aggData).length === 0) {
+                         console.warn("agg.json is empty or not found. Using mock agg data for all aggregates.");
+                         aggData = mockAggData;
+                    } else {
+                        for (const key in mockAggData) {
+                            if (!(key in aggData) ||
+                                (typeof aggData[key] === 'object' && aggData[key] !== null && Object.keys(aggData[key]).length === 0 && !Array.isArray(aggData[key])) ||
+                                (Array.isArray(aggData[key]) && aggData[key].length === 0)) {
+                                console.warn(`Using mock data for aggData.${key} as it's empty or missing.`);
+                                aggData[key] = mockAggData[key];
+                            }
+                        }
+                    }
                 } catch(e) {
-                    console.warn("Could not load agg.json, will try to use mock data. Error:", e);
-                    aggData = {}; // Initialize so checks below don't fail
+                    console.warn("Could not load agg.json, using full mock agg data. Error:", e);
+                    aggData = mockAggData;
                     aggError = true;
                 }
 
@@ -394,9 +418,9 @@
                         .style("text-align", "center")
                         .text(`Warning: Could not load ${pointsError && aggError ? 'points.json and agg.json' : pointsError ? 'points.json' : 'agg.json'}. Some charts may use mock data or appear empty.`);
                 }
-                console.log("Data loading attempt complete.");
+                console.log("Data loading attempt complete. Final data used:", {pointsData: pointsData.slice(0,5), aggData});
                 initializeCharts();
-            } catch (error) { // Catch any other unexpected error during setup
+            } catch (error) {
                 console.error("Unexpected error in loadData:", error);
             }
         }
@@ -439,14 +463,19 @@
 
         // --- Resize Handling ---
         function redrawAllCharts() {
-            console.log("Window resized / Initial draw. Redrawing charts...");
+            console.log("Redrawing charts...");
             drawStory1Chart();
             drawStory2Chart();
             drawStory3Chart();
             drawStory4Chart();
             drawStory5Chart();
             drawStory6Chart();
-            // drawStory7Chart(); ... etc.
+            drawStory7Chart();
+            drawStory8Chart();
+            drawStory9Chart();
+            // drawStory10Chart();
+            // drawStory11Chart();
+            // drawStory12Chart();
         }
 
         let resizeTimer;
@@ -483,52 +512,53 @@
             if (observed.length !== expected.length || observed.length === 0) return null;
             let chi2 = 0;
             for (let i = 0; i < observed.length; i++) {
-                if (expected[i] === 0) return null; // Avoid division by zero
+                if (expected[i] === 0) return null;
                 chi2 += Math.pow(observed[i] - expected[i], 2) / expected[i];
             }
             return chi2;
         }
 
         function getPValueApproximation(chi2Stat, df) {
-            if (df === 1) { // Common critical values for df=1
-                if (chi2Stat >= 10.83) return "< 0.001"; // Approx
+            if (df === 1) {
+                if (chi2Stat >= 10.83) return "< 0.001";
                 if (chi2Stat >= 6.63) return "< 0.01";
                 if (chi2Stat >= 3.84) return "< 0.05";
                 return "> 0.05";
             }
-            return "N/A (df≠1)"; // Only implemented for df=1
+            return "N/A (df≠1)";
         }
 
         function drawStory2Chart() {
             const rawDayNightData = (aggData && aggData.day_night_counts && Object.keys(aggData.day_night_counts).length > 0) ? aggData.day_night_counts : mockAggData.day_night_counts;
-            const pieData = Object.entries(rawDayNightData)
-                .filter(([key]) => key.toLowerCase() !== 'unknown') // Exclude 'Unknown' for chi-squared
+            const pieDataForCalc = Object.entries(rawDayNightData)
+                .filter(([key]) => key.toLowerCase() !== 'unknown')
                 .map(([key, value]) => ({ name: key, value: +value }));
 
-            let chi2Text = "χ² test not applicable (requires Day/Night data only)";
-            if (pieData.length === 2) {
-                const observedValues = pieData.map(d => d.value);
+            let chi2Text = "χ² test not applicable";
+            if (pieDataForCalc.length === 2) {
+                const observedValues = pieDataForCalc.map(d => d.value);
                 const totalObserved = d3.sum(observedValues);
                 if (totalObserved > 0) {
                     const expectedValues = [totalObserved / 2, totalObserved / 2];
                     const chi2Stat = calculateChiSquared(observedValues, expectedValues);
                     if (chi2Stat !== null) {
                         const pValueApprox = getPValueApproximation(chi2Stat, 1);
-                        chi2Text = `χ² = ${chi2Stat.toFixed(2)}, approx. p ${pValueApprox}`;
+                        chi2Text = `Day vs. Night: χ² = ${chi2Stat.toFixed(2)}, approx. p ${pValueApprox}`;
                     } else {
-                        chi2Text = "χ² test error (e.g., expected zero).";
+                        chi2Text = "χ² test error.";
                     }
                 }
+            } else if (pieDataForCalc.length > 0) {
+                 chi2Text = "χ² test only for Day/Night comparison.";
             }
 
             const config = {
                  margin: { top: 40, right: 20, bottom: 40, left: 20 },
                  title: "Sightings: Night vs Day",
-                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray], // Will only use first two if no "Unknown"
+                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray],
                  chi2Annotation: chi2Text
             };
-            // Use original data for pie if "Unknown" exists for display
-            const fullPieData = Object.entries(rawDayNightData).map(([key, value]) => ({ name: key, value: value }));
+            const fullPieData = Object.entries(rawDayNightData).map(([key, value]) => ({ name: key, value: +value }));
             renderPieChart("#chart2", fullPieData, config);
         }
 
@@ -550,7 +580,7 @@
         function drawStory4Chart() {
             const chartData = (aggData && aggData.witness_class_crosstab && Object.keys(aggData.witness_class_crosstab).length > 0) ? aggData.witness_class_crosstab : mockAggData.witness_class_crosstab;
             const config = {
-                margin: { ...chartSettings.margin, right: 100 }, // More right margin for legend
+                margin: { ...chartSettings.margin, right: 100 },
                 title: "Witness Group vs. Sighting Class"
             };
             renderStackedBarChart("#chart4", chartData, config);
@@ -573,10 +603,47 @@
             renderWordCloud("#chart6", chartData, config);
         }
 
+        function drawStory7Chart() {
+            const dataForChart = (pointsData && pointsData.length > 0) ? pointsData : mockPointsData;
+            const config = {
+                margin: { ...chartSettings.margin, left: 70, bottom: 50 },
+                title: "Altitude vs. Sentiment",
+                xCol: 'derived_elev',
+                yCol: 'derived_sent',
+                showLoess: true,
+                loessBandwidth: 0.5
+            };
+            renderScatterPlot("#chart7", dataForChart, config);
+        }
+
+        function drawStory8Chart() {
+            const chartData = (aggData && aggData.delay_road_type_summary && Object.keys(aggData.delay_road_type_summary).length > 0) ? aggData.delay_road_type_summary : mockAggData.delay_road_type_summary;
+            const config = {
+                margin: { ...chartSettings.margin, left: 80, bottom: 80 },
+                title: "Reporting Delay by Road Type (Log Scale)",
+                yLabel: "Reporting Delay (days, log scale)"
+            };
+            renderBoxPlot("#chart8", chartData, config);
+        }
+
+        function drawStory9Chart() {
+            const rawPronounData = (aggData && aggData.pronoun_counts && Object.keys(aggData.pronoun_counts).length > 0) ? aggData.pronoun_counts : mockAggData.pronoun_counts;
+            const donutData = Object.entries(rawPronounData).map(([key, value]) => ({ name: key, value: +value }));
+            const config = {
+                 margin: { top: 40, right: 20, bottom: 40, left: 20 },
+                 title: "The Gender of Bigfoot: Pronoun Usage",
+                 isDonut: true,
+                 donutRadiusRatio: 0.6, // Makes the hole 60% of the radius
+                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray, "#b3a2c7", "#7fcdbb", "#edf8b1"] // Expanded palette
+            };
+            renderPieChart("#chart9", donutData, config);
+        }
+
+
         // --- Reusable Chart Helper Functions ---
         function getChartDimensions(svgNode, margin, aspectRatio = 0.6) {
             const containerWidth = svgNode.parentNode.getBoundingClientRect().width;
-            const svgWidth = Math.max(300, containerWidth); // Min width for the SVG itself
+            const svgWidth = Math.max(300, containerWidth);
             const svgHeight = svgWidth * aspectRatio;
 
             d3.select(svgNode).attr("width", svgWidth).attr("height", svgHeight);
@@ -624,7 +691,7 @@
             }
 
             const xScale = isTimeline ?
-                d3.scaleTime().domain(d3.extent(processedMonthData, d => d.date)).range([0, boundedWidth]) :
+                d3.scaleTime().domain(d3.extent(processedMonthData, d => d.date)).nice().range([0, boundedWidth]) :
                 d3.scaleBand().domain(processedMonthData.map(d => d.monthName)).range([0, boundedWidth]).padding(0.1);
 
             const yMax = d3.max(processedMonthData, d => d.count) || 1;
@@ -648,7 +715,7 @@
                         x: xStart,
                         width: xEnd - xStart,
                     };
-                }).filter(d => d.width > 0 && typeof d.x !== 'undefined');
+                }).filter(d => typeof d.x !== 'undefined' && d.width > 0);
 
                 const yMaxSeason = d3.max(Object.values(chartData.season_counts)) || yMax;
                 const yScaleBars = d3.scaleLinear().domain([0, yMaxSeason]).range([boundedHeight, 0]);
@@ -662,7 +729,7 @@
                     .attr("width", d => d.width)
                     .attr("height", d => boundedHeight - yScaleBars(d.count))
                     .attr("fill", config.barColor || "#e0e0e0")
-                    .attr("opacity", 0.5) // Make them more backgroundy
+                    .attr("opacity", 0.5)
                     .on("mouseover", function(event, d) {
                         showTooltip(event, `${d.name}: ${d.count} total sightings`);
                     })
@@ -673,12 +740,12 @@
             g.append("g")
                 .attr("class", "axis x-axis")
                 .attr("transform", `translate(0,${boundedHeight})`)
-                .call(isTimeline ? d3.axisBottom(xScale).ticks(d3.timeYear.every(1)) : d3.axisBottom(xScale))
+                .call(isTimeline ? d3.axisBottom(xScale).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat("%Y")) : d3.axisBottom(xScale))
                 .selectAll("text")
-                .style("text-anchor", "end")
-                .attr("dx", "-.8em")
-                .attr("dy", ".15em")
-                .attr("transform", "rotate(-45)");
+                .style("text-anchor", isTimeline ? "middle" : "end")
+                .attr("dx", isTimeline ? 0 : "-.8em")
+                .attr("dy", isTimeline ? "1em" : ".15em")
+                .attr("transform", isTimeline ? "none" : "rotate(-45)");
 
             g.append("g")
                 .attr("class", "axis y-axis")
@@ -686,7 +753,7 @@
 
             g.append("text")
                 .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 15) // Adjusted position
+                .attr("y", 0 - margin.left + 15)
                 .attr("x", 0 - (boundedHeight / 2))
                 .attr("dy", "1em")
                 .style("text-anchor", "middle")
@@ -725,7 +792,7 @@
                 .attr("class", "line-point")
                 .attr("cx", d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
                 .attr("cy", d => yScale(d.count))
-                .attr("r", 3) // Slightly smaller points
+                .attr("r", 3)
                 .attr("fill", config.lineColor || NYT_PALETTE.accentTeal)
                 .attr("stroke", NYT_PALETTE.softBackdrop)
                 .attr("stroke-width", 1)
@@ -762,12 +829,11 @@
                     })
                     .on("mousemove", moveTooltip)
                     .on("mouseout", hideTooltip);
-                 // TODO: Add labels for release markers
             }
 
             svg.append("text")
                 .attr("x", (margin.left + boundedWidth / 2))
-                .attr("y", margin.top / 2) // Adjusted for better centering
+                .attr("y", margin.top / 2)
                 .attr("text-anchor", "middle")
                 .style("font-size", "16px")
                 .style("font-family", "var(--font-heading)")
@@ -782,7 +848,7 @@
             const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.8);
 
             const radius = Math.min(boundedWidth, boundedHeight) / 2 * 0.8;
-            const g = svg.append("g").attr("transform", `translate(${svgWidth / 2},${svgHeight / 2 - (config.chi2Annotation ? 10 : 0)})`); // Adjust center for annotation
+            const g = svg.append("g").attr("transform", `translate(${svgWidth / 2},${svgHeight / 2 - (config.chi2Annotation ? 10 : 0)})`);
 
             if (!data || data.length === 0) {
                  g.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").text("No data for chart.");
@@ -793,7 +859,7 @@
                             .domain(data.map(d => d.name));
 
             const pie = d3.pie().value(d => d.value).sort(null);
-            const arcGenerator = d3.arc().innerRadius(config.isDonut ? radius * 0.6 : 0).outerRadius(radius);
+            const arcGenerator = d3.arc().innerRadius(config.isDonut ? radius * (config.donutRadiusRatio || 0.6) : 0).outerRadius(radius);
 
             const arcs = g.selectAll(".arc")
                 .data(pie(data))
@@ -825,17 +891,17 @@
                 .enter().append("g")
                 .attr("class", "legend-item")
                 .attr("transform", (d, i, nodes) => {
-                    const itemWidth = 100; // Approximate width for each legend item
-                    const itemsPerRow = Math.floor(boundedWidth / itemWidth);
+                    const itemWidth = 100;
+                    const itemsPerRow = Math.max(1, Math.floor(boundedWidth / itemWidth));
                     const col = i % itemsPerRow;
                     const row = Math.floor(i / itemsPerRow);
-                    const xOffset = col * itemWidth - (itemsPerRow -1) * itemWidth / 2; // Centering logic for legend items
+                    const xOffset = col * itemWidth - (itemsPerRow -1) * itemWidth / 2;
                     const yOffset = row * 20;
                     return `translate(${xOffset}, ${yOffset})`;
                 });
 
             legend.append("rect")
-                .attr("x", -radius * 0.8) // Adjust based on overall centering
+                .attr("x", -radius * 0.8)
                 .attr("y", 0)
                 .attr("width", 12)
                 .attr("height", 12)
@@ -849,11 +915,10 @@
                 .style("font-size", "11px")
                 .text(d => `${d.data.name} (${(d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1)}%)`);
 
-
             if (config.chi2Annotation) {
-                 svg.append("text") // Append to main SVG, not 'g' to position it relative to SVG bottom
+                 svg.append("text")
                     .attr("x", svgWidth / 2)
-                    .attr("y", svgHeight - 5) // Position near the bottom
+                    .attr("y", svgHeight - 5)
                     .attr("text-anchor", "middle")
                     .style("font-size", "10px")
                     .style("fill", NYT_PALETTE.midGray)
@@ -990,18 +1055,17 @@
                 nodesMap.get(link.target).degree += (link.value || 1);
             });
             const nodes = Array.from(nodesMap.values());
-            const links = data.map(d => ({...d})); // Ensure links are copies
+            const links = data.map(d => ({...d}));
 
             const simulation = d3.forceSimulation(nodes)
                 .force("link", d3.forceLink(links).id(d => d.id).strength(d => 0.01 + (d.value || 1) / 50).distance(d => 100 - (d.value || 1)))
-                .force("charge", d3.forceManyBody().strength(-100 - nodes.length * 2)) // Adjust strength based on node count
+                .force("charge", d3.forceManyBody().strength(-100 - nodes.length * 2))
                 .force("center", d3.forceCenter(boundedWidth / 2, boundedHeight / 2))
                 .force("x", d3.forceX(boundedWidth / 2).strength(0.03))
                 .force("y", d3.forceY(boundedHeight / 2).strength(0.03));
 
-            const maxDegree = Math.max(1, d3.max(nodes, d => d.degree)); // Avoid zero max degree
+            const maxDegree = Math.max(1, d3.max(nodes, d => d.degree));
             const nodeRadiusScale = d3.scaleSqrt().domain([1, maxDegree]).range([3, 12]);
-
 
             const link = g.append("g")
                 .attr("stroke", NYT_PALETTE.hairline)
@@ -1017,7 +1081,7 @@
                 .join("circle")
                 .attr("r", d => nodeRadiusScale(d.degree) || 3)
                 .attr("fill", d => d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange)
-                .attr("stroke", d3.color(d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange).darker(0.5))
+                .attr("stroke", d => d3.color(d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange).darker(0.5))
                 .attr("stroke-width", 1)
                 .call(drag(simulation))
                  .on("mouseover", function(event, d) {
@@ -1074,7 +1138,7 @@
 
             svg.append("text")
                 .attr("x", (svgWidth / 2))
-                .attr("y", margin.top / 1.5) // Adjusted title position
+                .attr("y", margin.top / 1.5)
                 .attr("text-anchor", "middle")
                 .style("font-size", "16px")
                 .style("font-family", "var(--font-heading)")
@@ -1085,7 +1149,7 @@
             console.log(`Rendering WordCloud for ${svgSelector}`);
             const svg = d3.select(svgSelector);
             svg.selectAll("*").remove();
-            const margin = config.margin || {top:20, right:10, bottom:20, left:10}; // Allow title space
+            const margin = config.margin || {top:20, right:10, bottom:20, left:10};
 
             const seasons = ["Spring", "Summer", "Fall", "Winter"];
             const numCols = 2;
@@ -1096,8 +1160,8 @@
 
             const totalSvgWidth = Math.max(300, containerWidth);
             const singleCloudAspectRatio = 0.8;
-            const horizontalPadding = 20; // Padding between clouds horizontally
-            const verticalPadding = 40;   // Padding between clouds vertically (more for titles)
+            const horizontalPadding = 20;
+            const verticalPadding = 40;
 
             const singleCloudWidth = (totalSvgWidth - margin.left - margin.right - (numCols - 1) * horizontalPadding) / numCols;
             const singleCloudHeight = singleCloudWidth * singleCloudAspectRatio;
@@ -1122,7 +1186,7 @@
                 return;
             }
 
-            const colorScale = d3.scaleOrdinal([NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, "#7aa25c", "#6a7985"]); // Example distinct colors
+            const colorScale = d3.scaleOrdinal([NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, "#7aa25c", "#6a7985"]);
 
 
             seasons.forEach((season, i) => {
@@ -1157,18 +1221,17 @@
                 }
 
                 const maxFreq = d3.max(words, d => d.size) || 1;
-                // More pronounced font size difference
                 const fontSizeScale = d3.scaleSqrt().domain([d3.min(words, d => d.size) || 1, maxFreq]).range([10, Math.min(40, singleCloudHeight/4)]);
 
                 d3.layout.cloud().size([singleCloudWidth, singleCloudHeight])
                     .words(words.map(d => ({text: d.text, size: fontSizeScale(d.size), originalSize: d.size })))
-                    .padding(3) // Increased padding
-                    .rotate(() => Math.random() > 0.7 ? 0 : (~~(Math.random() * 2) * 90)) // 0 or 90 degrees
+                    .padding(3)
+                    .rotate(() => Math.random() > 0.7 ? 0 : (~~(Math.random() * 2) * 90))
                     .font("var(--font-body)")
                     .fontSize(d => d.size)
                     .on("end", (drawnWords) => {
                         cloudGroup.append("g")
-                            .attr("transform", `translate(${singleCloudWidth / 2},${singleCloudHeight / 2 + 10})`) // +10 to account for title
+                            .attr("transform", `translate(${singleCloudWidth / 2},${singleCloudHeight / 2 + 10})`)
                             .selectAll("text")
                             .data(drawnWords)
                             .enter().append("text")
@@ -1189,7 +1252,7 @@
         }
 
         function renderScatterPlot(svgSelector, data, config) {
-            console.log(`Rendering ScatterPlot for ${svgSelector}`, { data, config });
+            console.log(`Rendering ScatterPlot for ${svgSelector}`);
             const svg = d3.select(svgSelector);
             svg.selectAll("*").remove();
             const margin = config.margin || chartSettings.margin;
@@ -1197,55 +1260,249 @@
             const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
              if (!data || data.length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for scatter plot.");
                 return;
             }
-            g.append("text").attr("x", 10).attr("y", 20).text("ScatterPlot Placeholder");
+
+            const xAccessor = d => d[config.xCol];
+            const yAccessor = d => d[config.yCol];
+
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, xAccessor)).nice()
+                .range([0, boundedWidth]);
+
+            const yScale = d3.scaleLinear()
+                .domain(d3.extent(data, yAccessor)).nice()
+                .range([boundedHeight, 0]);
+
+            g.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${boundedHeight})`)
+                .call(d3.axisBottom(xScale).ticks(5).tickSizeOuter(0).tickFormat(d3.format(",")))
+                .append("text")
+                .attr("x", boundedWidth / 2)
+                .attr("y", margin.bottom - 15)
+                .attr("fill", NYT_PALETTE.charcoal)
+                .style("text-anchor", "middle")
+                .text("Altitude (m)");
+
+            g.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0))
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 15)
+                .attr("x", 0 - (boundedHeight / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .style("fill", NYT_PALETTE.charcoal)
+                .text("Sentiment Score");
+
+            g.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
+
+            g.selectAll("circle.scatter-point")
+                .data(data.filter(d => xAccessor(d) != null && yAccessor(d) != null))
+                .join("circle")
+                .attr("class", "scatter-point")
+                .attr("cx", d => xScale(xAccessor(d)))
+                .attr("cy", d => yScale(yAccessor(d)))
+                .attr("r", 3.5)
+                .attr("fill", NYT_PALETTE.accentTeal)
+                .attr("opacity", 0.6)
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("r", 5.5).attr("opacity", 1);
+                    showTooltip(event, `Altitude: ${xAccessor(d) ? xAccessor(d).toFixed(0) : 'N/A'}m<br>Sentiment: ${yAccessor(d) ? yAccessor(d).toFixed(2) : 'N/A'}`);
+                })
+                .on("mousemove", moveTooltip)
+                .on("mouseout", function(event, d) {
+                    d3.select(this).attr("r", 3.5).attr("opacity", 0.6);
+                    hideTooltip();
+                });
+
+            if (config.showLoess && typeof d3.regressionLowess === 'function') {
+                const validDataForLoess = data.filter(d => xAccessor(d) != null && yAccessor(d) != null);
+                if (validDataForLoess.length > 1) {
+                    const lowess = d3.regressionLowess()
+                        .x(xAccessor)
+                        .y(yAccessor)
+                        .bandwidth(config.loessBandwidth || 0.35);
+
+                    const lineGenerator = d3.line()
+                        .x(d => xScale(d[0]))
+                        .y(d => yScale(d[1]))
+                        .curve(d3.curveBasis);
+
+                    const lowessData = lowess(validDataForLoess);
+
+                    if (lowessData && lowessData.length > 0) {
+                        g.append("path")
+                            .datum(lowessData)
+                            .attr("fill", "none")
+                            .attr("stroke", NYT_PALETTE.highlightOrange)
+                            .attr("stroke-width", 2)
+                            .attr("d", lineGenerator);
+                    }
+                }
+            }
+
+            svg.append("text")
+                .attr("x", (margin.left + boundedWidth / 2))
+                .attr("y", margin.top / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title || "Chart Title");
         }
 
         function renderBoxPlot(svgSelector, data, config) {
-            console.log(`Rendering BoxPlot for ${svgSelector}`, { data, config });
+            console.log(`Rendering BoxPlot for ${svgSelector}`);
             const svg = d3.select(svgSelector);
             svg.selectAll("*").remove();
             const margin = config.margin || chartSettings.margin;
             const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.6);
             const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-             if (Object.keys(data || {}).length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+            if (!data || Object.keys(data).length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for box plot.");
                 return;
             }
-            g.append("text").attr("x", 10).attr("y", 20).text("BoxPlot Placeholder");
+
+            const categories = Object.keys(data);
+            const allValues = [];
+            categories.forEach(cat => {
+                if (data[cat]) {
+                    allValues.push(data[cat].min, data[cat].q1, data[cat].median, data[cat].q3, data[cat].max);
+                }
+            });
+
+            const xScale = d3.scaleBand()
+                .domain(categories)
+                .range([0, boundedWidth])
+                .padding(0.4);
+
+            const yMinDomain = Math.max(1, d3.min(allValues.filter(v => v!=null && v > 0)) || 1);
+            const yMaxDomain = d3.max(allValues.filter(v => v!=null)) || 10;
+
+            const yScale = d3.scaleLog()
+                .domain([yMinDomain, yMaxDomain])
+                .nice()
+                .range([boundedHeight, 0]);
+
+            g.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${boundedHeight})`)
+                .call(d3.axisBottom(xScale).tickSizeOuter(0))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)");
+
+            g.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(yScale).ticks(5, d => {
+                        if (d === 0) return "0";
+                        if (Math.log10(d) % 1 === 0 || d === yMinDomain || d === yMaxDomain ) return d3.format("~s")(d);
+                        return "";
+                    })
+                    .tickSizeOuter(0));
+
+            g.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 15)
+                .attr("x", 0 - (boundedHeight / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("fill", NYT_PALETTE.midGray)
+                .text(config.yLabel || "Reporting Delay (days, log scale)");
+
+            const boxWidth = xScale.bandwidth();
+
+            categories.forEach(cat => {
+                const stats = data[cat];
+                if (!stats || stats.count === 0) return;
+
+                const xCenter = xScale(cat) + boxWidth / 2;
+
+                const logSafeMin = Math.max(1, stats.min);
+                const logSafeQ1 = Math.max(1, stats.q1);
+                const logSafeMedian = Math.max(1, stats.median);
+                const logSafeQ3 = Math.max(1, stats.q3);
+                const logSafeMax = Math.max(1, stats.max);
+
+                g.append("line")
+                    .attr("x1", xCenter)
+                    .attr("x2", xCenter)
+                    .attr("y1", yScale(logSafeMin))
+                    .attr("y2", yScale(logSafeMax))
+                    .attr("stroke", NYT_PALETTE.charcoal);
+
+                g.append("rect")
+                    .attr("x", xScale(cat))
+                    .attr("y", yScale(logSafeQ3))
+                    .attr("height", Math.max(0, yScale(logSafeQ1) - yScale(logSafeQ3)))
+                    .attr("width", boxWidth)
+                    .attr("stroke", NYT_PALETTE.charcoal)
+                    .attr("fill", NYT_PALETTE.accentTeal)
+                    .attr("opacity", 0.7)
+                     .on("mouseover", function(event) {
+                        showTooltip(event, `${cat}:<br>Min: ${stats.min.toFixed(0)}<br>Q1: ${stats.q1.toFixed(0)}<br>Med: ${stats.median.toFixed(0)}<br>Q3: ${stats.q3.toFixed(0)}<br>Max: ${stats.max.toFixed(0)}<br>N: ${stats.count}`);
+                    })
+                    .on("mousemove", moveTooltip)
+                    .on("mouseout", hideTooltip);
+
+                g.append("line")
+                    .attr("x1", xScale(cat))
+                    .attr("x2", xScale(cat) + boxWidth)
+                    .attr("y1", yScale(logSafeMedian))
+                    .attr("y2", yScale(logSafeMedian))
+                    .attr("stroke", NYT_PALETTE.softBackdrop)
+                    .attr("stroke-width", 2);
+
+                g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMin)).attr("y2", yScale(logSafeMin)).attr("stroke", NYT_PALETTE.charcoal);
+                g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMax)).attr("y2", yScale(logSafeMax)).attr("stroke", NYT_PALETTE.charcoal);
+            });
+
+            svg.append("text")
+                .attr("x", (margin.left + boundedWidth / 2))
+                .attr("y", margin.top / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title || "Chart Title");
         }
 
         function renderViolinPlot(svgSelector, data, config) {
-            console.log(`Rendering ViolinPlot for ${svgSelector}`, { data, config });
+            console.log(`Rendering ViolinPlot for ${svgSelector}`);
             const svg = d3.select(svgSelector);
             svg.selectAll("*").remove();
             const margin = config.margin || chartSettings.margin;
             const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.6);
             const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-             if (Object.keys(data || {}).length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+             if (!data || !data.pre_internet || !data.post_internet || !data.pre_internet.values || !data.post_internet.values) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for violin plot.");
                 return;
             }
-            g.append("text").attr("x", 10).attr("y", 20).text("ViolinPlot Placeholder");
+            g.append("text").attr("x", 10).attr("y", 20).text("ViolinPlot Placeholder - Full D3 TBD");
         }
 
         function renderHeatmap(svgSelector, data, config) {
-            console.log(`Rendering Heatmap for ${svgSelector}`, { data, config });
+            console.log(`Rendering Heatmap for ${svgSelector}`);
             const svg = d3.select(svgSelector);
             svg.selectAll("*").remove();
             const margin = config.margin || chartSettings.margin;
             const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.7);
             const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-             if (Object.keys(data || {}).length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
+             if (!data || Object.keys(data).length === 0) {
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for heatmap.");
                 return;
             }
-             g.append("text").attr("x", 10).attr("y", 20).text("Heatmap Placeholder");
+             g.append("text").attr("x", 10).attr("y", 20).text("Heatmap Placeholder - Full D3 TBD");
         }
 
         async function renderChoroplethMap(svgSelector, geoDataUrl, valueData, config) {
@@ -1260,9 +1517,7 @@
                 g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No sighting data for map.");
                 return;
             }
-            g.append("text").attr("x", 10).attr("y", 20).text("Choropleth Placeholder");
-            // const geojson = await d3.json(geoDataUrl);
-            // Further implementation...
+            g.append("text").attr("x", 10).attr("y", 20).text("Choropleth Placeholder - Full D3 TBD");
         }
 
         window.renderFunctions = {
