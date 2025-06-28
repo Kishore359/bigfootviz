@@ -286,1614 +286,1042 @@
         <p>Data analysis and visualization by a NYT Data Graphics Engineer for AIDE. | Data Source: <a href="[Placeholder: Link to BFRO or data source]" target="_blank">BFRO Reports (Processed)</a></p>
     </footer>
 
-    <script type="module">
-        console.log("D3 version:", d3.version);
-        if (d3.layout && d3.layout.cloud) { console.log("d3-cloud successfully loaded onto d3.layout."); }
-        else if (typeof d3.cloud === 'function') { console.log("d3.cloud() is available (standalone d3-cloud)."); }
-        else { console.warn("d3-cloud may not be loaded correctly. Word clouds might fail."); }
-        if (d3.regressionLowess) { console.log("d3-regression loaded."); }
-        else { console.error("d3-regression not loaded."); }
+    <script> // Changed from type="module"
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("D3 version:", typeof d3 !== 'undefined' ? d3.version : "D3 NOT LOADED");
 
-        // --- Global Variables & Configuration ---
-        let pointsData = null;
-        let aggData = null;
-        const tooltip = d3.select("#tooltip");
+            if (typeof d3 !== 'undefined' && typeof d3.regressionLowess === 'function') {
+                console.log("d3-regression loaded onto d3.");
+            } else if (typeof d3Regression !== 'undefined' && typeof d3Regression.regressionLowess === 'function') {
+                 console.log("d3-regression loaded as d3Regression global. Aliasing to d3.regressionLowess");
+                 if (typeof d3 !== 'undefined') d3.regressionLowess = d3Regression.regressionLowess;
+            } else {
+                 console.error("d3-regression not loaded or accessible in expected ways.");
+            }
 
-        const chartSettings = {
-            margin: { top: 40, right: 30, bottom: 70, left: 70 },
-        };
+            if (typeof d3 !== 'undefined' && d3.layout && d3.layout.cloud) { console.log("d3-cloud successfully loaded onto d3.layout."); }
+            else if (typeof d3 !== 'undefined' && typeof d3.cloud === 'function') { console.log("d3.cloud() is available (standalone d3-cloud)."); }
+            else { console.warn("d3-cloud may not be loaded correctly. Word clouds might fail."); }
 
-        const NYT_PALETTE = {
-            charcoal: "#111111",
-            midGray: "#666666",
-            accentTeal: "#1E6F78",
-            highlightOrange: "#E4572E",
-            softBackdrop: "#F9F9F7",
-            hairline: "#e2e2e2"
-        };
 
-        const mockAggData = {
-            month_counts: {1: 20, 2: 25, 3: 40, 4: 60, 5: 80, 6: 100, 7: 120, 8: 90, 9: 70, 10: 50, 11: 30, 12: 22},
-            season_counts: {"Spring": 180, "Summer": 310, "Fall": 150, "Winter": 67},
-            day_night_counts: {"Day": 250, "Night": 450, "Unknown": 50},
-            media_timeline_monthly: {
-                "2018-01": 5, "2018-02": 7, "2018-03": 6, "2018-04": 8, "2018-05": 10, "2018-06": 12,
-                "2018-07": 15, "2018-08": 11, "2018-09": 9, "2018-10": 7, "2018-11": 6, "2018-12": 5,
-                "2019-01": 6, "2019-02": 8, "2019-03": 7, "2019-04": 9, "2019-05": 11, "2019-06": 14,
-                "2019-07": 17, "2019-08": 13, "2019-09": 10, "2019-10": 8, "2019-11": 7, "2019-12": 6,
-            },
-            media_timeline_releases: {
-                1972: "The Legend of Boggy Creek", 1987: "Harry and the Hendersons", 2008: "Minerva Monster"
-            },
-            witness_class_crosstab: {
-                "false": {"Class A": 80, "Class B": 120, "Class C": 30},
-                "true": {"Class A": 40, "Class B": 60, "Class C": 15}
-            },
-            environment_verb_edges: [
-                { source: "Forest", target: "see", value: 50 }, { source: "Forest", target: "hear", value: 30 },
-                { source: "Swamp", target: "see", value: 20 }, { source: "Swamp", target: "smell", value: 15 },
-                { source: "Forest", target: "run", value: 25 }, { source: "River", target: "hear", value: 10 }
-            ],
-            season_word_freq: {
-                "Spring": [{text:"mud", size:20}, {text:"green", size:18}, {text:"creek", size:15}],
-                "Summer": [{text:"hot", size:25}, {text:"woods", size:22}, {text:"trail", size:19}],
-                "Fall": [{text:"leaves", size:23}, {text:"dark", size:20}, {text:"october", size:17}],
-                "Winter": [{text:"snow", size:18}, {text:"cold", size:15}, {text:"night", size:12}]
-            },
-            altitude_sentiment_scatter: Array.from({length: 200}, () => [Math.random() * 2000, Math.random() * 2 - 1]),
-            delay_road_type_summary: {
-                "Interstate": {"min":1, "q1":5, "median":10, "q3":30, "max":100, "count":50},
-                "Hwy": {"min":0, "q1":3, "median":7, "q3":25, "max":90, "count":60},
-                "State": {"min":2, "q1":8, "median":15, "q3":40, "max":120, "count":40},
-                "County": {"min":0, "q1":4, "median":9, "q3":20, "max":80, "count":70},
-                "Local": {"min":1, "q1":6, "median":12, "q3":35, "max":110, "count":55}
-            },
-            pronoun_counts: {"he": 50, "it": 150, "she": 20},
-            pre_post_internet: {
-                class_summary: {
-                    "pre_internet": {"Class A": 100, "Class B": 150, "Class C": 50},
-                    "post_internet": {"Class A": 120, "Class B": 180, "Class C": 60}
+            // --- Global Variables & Configuration ---
+            let pointsData = null;
+            let aggData = null;
+            const tooltip = d3.select("#tooltip"); // This line was causing error if d3 not loaded
+
+            const chartSettings = {
+                margin: { top: 40, right: 30, bottom: 70, left: 70 },
+            };
+
+            const NYT_PALETTE = {
+                charcoal: "#111111",
+                midGray: "#666666",
+                accentTeal: "#1E6F78",
+                highlightOrange: "#E4572E",
+                softBackdrop: "#F9F9F7",
+                hairline: "#e2e2e2"
+            };
+
+            const mockAggData = {
+                month_counts: {1: 20, 2: 25, 3: 40, 4: 60, 5: 80, 6: 100, 7: 120, 8: 90, 9: 70, 10: 50, 11: 30, 12: 22},
+                season_counts: {"Spring": 180, "Summer": 310, "Fall": 150, "Winter": 67},
+                day_night_counts: {"Day": 250, "Night": 450, "Unknown": 50},
+                media_timeline_monthly: {
+                    "2018-01": 5, "2018-02": 7, "2018-03": 6, "2018-04": 8, "2018-05": 10, "2018-06": 12,
+                    "2018-07": 15, "2018-08": 11, "2018-09": 9, "2018-10": 7, "2018-11": 6, "2018-12": 5,
+                    "2019-01": 6, "2019-02": 8, "2019-03": 7, "2019-04": 9, "2019-05": 11, "2019-06": 14,
+                    "2019-07": 17, "2019-08": 13, "2019-09": 10, "2019-10": 8, "2019-11": 7, "2019-12": 6,
                 },
-                narr_len_summary: {
-                    "pre_internet": { "values": Array.from({length: 50}, () => Math.random() * 1950 + 50) },
-                    "post_internet": { "values": Array.from({length: 50}, () => Math.random() * 2920 + 80) }
-                }
-            },
-            season_weather_matrix: {
-                "Spring": {"clear": 50, "rain": 20, "cloud": 30, "wind": 5, "fog": 2, "snow":0, "sunny":15},
-                "Summer": {"sunny": 80, "clear": 40, "cloud": 10, "rain": 5, "wind": 2, "fog":0, "snow":0},
-                "Fall": {"cloud": 40, "rain": 30, "wind": 20, "clear": 15, "fog": 5, "sunny":10, "snow":0},
-                "Winter": {"snow": 30, "cloud": 20, "fog": 10, "clear": 5, "wind": 10, "rain":2, "sunny":0}
-            },
-            county_sightings_population: [
-                { county_fips: "01001", sightings: 5, pop_2020: 56145, name: "Autauga County" },
-                { county_fips: "06037", sightings: 20, pop_2020: 9943046, name: "Los Angeles County" }
-            ]
-        };
-        const mockPointsData = Array.from({length: 200}, (_,i) => ({
-            derived_elev: Math.random() * 2000,
-            derived_sent: Math.random() * 2 - 1,
-        }));
-
-        // --- Data Loading ---
-        async function loadData() {
-            try {
-                let pointsError = false;
-                let aggError = false;
-                try {
-                    pointsData = await d3.json("points.json");
-                    if (!pointsData || pointsData.length === 0) {
-                        console.warn("points.json is empty or not found. Using mock points data.");
-                        pointsData = mockPointsData;
+                media_timeline_releases: {
+                    1972: "The Legend of Boggy Creek", 1987: "Harry and the Hendersons", 2008: "Minerva Monster"
+                },
+                witness_class_crosstab: {
+                    "false": {"Class A": 80, "Class B": 120, "Class C": 30},
+                    "true": {"Class A": 40, "Class B": 60, "Class C": 15}
+                },
+                environment_verb_edges: [
+                    { source: "Forest", target: "see", value: 50 }, { source: "Forest", target: "hear", value: 30 },
+                    { source: "Swamp", target: "see", value: 20 }, { source: "Swamp", target: "smell", value: 15 },
+                    { source: "Forest", target: "run", value: 25 }, { source: "River", target: "hear", value: 10 }
+                ],
+                season_word_freq: {
+                    "Spring": [{text:"mud", size:20}, {text:"green", size:18}, {text:"creek", size:15}],
+                    "Summer": [{text:"hot", size:25}, {text:"woods", size:22}, {text:"trail", size:19}],
+                    "Fall": [{text:"leaves", size:23}, {text:"dark", size:20}, {text:"october", size:17}],
+                    "Winter": [{text:"snow", size:18}, {text:"cold", size:15}, {text:"night", size:12}]
+                },
+                altitude_sentiment_scatter: Array.from({length: 200}, () => [Math.random() * 2000, Math.random() * 2 - 1]),
+                delay_road_type_summary: {
+                    "Interstate": {"min":1, "q1":5, "median":10, "q3":30, "max":100, "count":50},
+                    "Hwy": {"min":0, "q1":3, "median":7, "q3":25, "max":90, "count":60},
+                    "State": {"min":2, "q1":8, "median":15, "q3":40, "max":120, "count":40},
+                    "County": {"min":0, "q1":4, "median":9, "q3":20, "max":80, "count":70},
+                    "Local": {"min":1, "q1":6, "median":12, "q3":35, "max":110, "count":55}
+                },
+                pronoun_counts: {"he": 50, "it": 150, "she": 20},
+                pre_post_internet: {
+                    class_summary: {
+                        "pre_internet": {"Class A": 100, "Class B": 150, "Class C": 50},
+                        "post_internet": {"Class A": 120, "Class B": 180, "Class C": 60}
+                    },
+                    narr_len_summary: {
+                        "pre_internet": { "values": Array.from({length: 50}, () => Math.random() * 1950 + 50) },
+                        "post_internet": { "values": Array.from({length: 50}, () => Math.random() * 2920 + 80) }
                     }
-                } catch(e) {
-                    console.warn("Could not load points.json, using mock points data. Error:", e);
-                    pointsData = mockPointsData;
-                    pointsError = true;
-                }
+                },
+                season_weather_matrix: {
+                    "Spring": {"clear": 50, "rain": 20, "cloud": 30, "wind": 5, "fog": 2, "snow":0, "sunny":15},
+                    "Summer": {"sunny": 80, "clear": 40, "cloud": 10, "rain": 5, "wind": 2, "fog":0, "snow":0},
+                    "Fall": {"cloud": 40, "rain": 30, "wind": 20, "clear": 15, "fog": 5, "sunny":10, "snow":0},
+                    "Winter": {"snow": 30, "cloud": 20, "fog": 10, "clear": 5, "wind": 10, "rain":2, "sunny":0}
+                },
+                county_sightings_population: [
+                    { county_fips: "01001", sightings: 5, pop_2020: 56145, name: "Autauga County" },
+                    { county_fips: "06037", sightings: 20, pop_2020: 9943046, name: "Los Angeles County" }
+                ]
+            };
+            const mockPointsData = Array.from({length: 200}, (_,i) => ({
+                derived_elev: Math.random() * 2000,
+                derived_sent: Math.random() * 2 - 1,
+            }));
+
+            // --- Data Loading ---
+            async function loadData() {
                 try {
-                    aggData = await d3.json("agg.json");
-                    if (!aggData || Object.keys(aggData).length === 0) {
-                         console.warn("agg.json is empty or not found. Using mock agg data for all aggregates.");
-                         aggData = mockAggData;
-                    } else {
-                        for (const key in mockAggData) {
-                            if (!(key in aggData) ||
-                                (typeof aggData[key] === 'object' && aggData[key] !== null && Object.keys(aggData[key]).length === 0 && !Array.isArray(aggData[key])) ||
-                                (Array.isArray(aggData[key]) && aggData[key].length === 0)) {
-                                console.warn(`Using mock data for aggData.${key} as it's empty or missing.`);
-                                aggData[key] = mockAggData[key];
+                    let pointsError = false;
+                    let aggError = false;
+                    try {
+                        pointsData = await d3.json("points.json");
+                        if (!pointsData || pointsData.length === 0) {
+                            console.warn("points.json is empty or not found. Using mock points data.");
+                            pointsData = mockPointsData;
+                        }
+                    } catch(e) {
+                        console.warn("Could not load points.json, using mock points data. Error:", e);
+                        pointsData = mockPointsData;
+                        pointsError = true;
+                    }
+                    try {
+                        aggData = await d3.json("agg.json");
+                        if (!aggData || Object.keys(aggData).length === 0) {
+                             console.warn("agg.json is empty or not found. Using mock agg data for all aggregates.");
+                             aggData = mockAggData;
+                        } else {
+                            for (const key in mockAggData) {
+                                if (!(key in aggData) ||
+                                    (typeof aggData[key] === 'object' && aggData[key] !== null && Object.keys(aggData[key]).length === 0 && !Array.isArray(aggData[key])) ||
+                                    (Array.isArray(aggData[key]) && aggData[key].length === 0)) {
+                                    console.warn(`Using mock data for aggData.${key} as it's empty or missing.`);
+                                    aggData[key] = mockAggData[key];
+                                }
                             }
                         }
+                    } catch(e) {
+                        console.warn("Could not load agg.json, using full mock agg data. Error:", e);
+                        aggData = mockAggData;
+                        aggError = true;
                     }
-                } catch(e) {
-                    console.warn("Could not load agg.json, using full mock agg data. Error:", e);
-                    aggData = mockAggData;
-                    aggError = true;
-                }
 
-                if (pointsError || aggError) {
-                     d3.select("main").insert("p", ":first-child")
-                        .style("color", NYT_PALETTE.highlightOrange)
-                        .style("text-align", "center")
-                        .text(`Warning: Could not load ${pointsError && aggError ? 'points.json and agg.json' : pointsError ? 'points.json' : 'agg.json'}. Some charts may use mock data or appear empty.`);
+                    if (pointsError || aggError) {
+                         d3.select("main").insert("p", ":first-child")
+                            .style("color", NYT_PALETTE.highlightOrange)
+                            .style("text-align", "center")
+                            .text(`Warning: Could not load ${pointsError && aggError ? 'points.json and agg.json' : pointsError ? 'points.json' : 'agg.json'}. Some charts may use mock data or appear empty.`);
+                    }
+                    console.log("Data loading attempt complete. Final data used:", {pointsData: pointsData.slice(0,5), aggData});
+                    initializeCharts();
+                } catch (error) {
+                    console.error("Unexpected error in loadData:", error);
                 }
-                console.log("Data loading attempt complete. Final data used:", {pointsData: pointsData.slice(0,5), aggData});
-                initializeCharts();
-            } catch (error) {
-                console.error("Unexpected error in loadData:", error);
             }
-        }
 
-        // --- Tooltip Functions ---
-        function showTooltip(event, content) {
-            tooltip.transition().duration(150).style("opacity", 0.9);
-            tooltip.html(content)
-                .style("left", (event.pageX + 15) + "px")
-                .style("top", (event.pageY - 28) + "px");
-        }
-
-        function moveTooltip(event) {
-            tooltip.style("left", (event.pageX + 15) + "px")
-                   .style("top", (event.pageY - 28) + "px");
-        }
-
-        function hideTooltip() {
-            tooltip.transition().duration(150).style("opacity", 0);
-        }
-
-        // --- Accessibility ---
-        function toggleDescription(chartNum) {
-            const descDiv = document.getElementById(`desc${chartNum}`);
-            if (descDiv) {
-                descDiv.hidden = !descDiv.hidden;
-                if (!descDiv.hidden) descDiv.focus();
+            // --- Tooltip Functions ---
+            function showTooltip(event, content) {
+                tooltip.transition().duration(150).style("opacity", 0.9);
+                tooltip.html(content)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 28) + "px");
             }
-        }
-        window.toggleDescription = toggleDescription;
 
-        d3.selectAll("svg[role='img']").each(function() {
-            const chartIdNum = this.id.replace("chart", "");
-            d3.select(this).on("keydown", function(event) {
-                if (event.key === "Enter") {
-                    toggleDescription(chartIdNum);
+            function moveTooltip(event) {
+                tooltip.style("left", (event.pageX + 15) + "px")
+                       .style("top", (event.pageY - 28) + "px");
+            }
+
+            function hideTooltip() {
+                tooltip.transition().duration(150).style("opacity", 0);
+            }
+
+            // --- Accessibility ---
+            function toggleDescription(chartNum) {
+                const descDiv = document.getElementById(`desc${chartNum}`);
+                if (descDiv) {
+                    descDiv.hidden = !descDiv.hidden;
+                    if (!descDiv.hidden) descDiv.focus();
                 }
+            }
+            window.toggleDescription = toggleDescription;
+
+            d3.selectAll("svg[role='img']").each(function() {
+                const chartIdNum = this.id.replace("chart", "");
+                d3.select(this).on("keydown", function(event) {
+                    if (event.key === "Enter") {
+                        toggleDescription(chartIdNum);
+                    }
+                });
             });
-        });
 
-        // --- Resize Handling ---
-        function redrawAllCharts() {
-            console.log("Redrawing charts...");
-            drawStory1Chart();
-            drawStory2Chart();
-            drawStory3Chart();
-            drawStory4Chart();
-            drawStory5Chart();
-            drawStory6Chart();
-            drawStory7Chart();
-            drawStory8Chart();
-            drawStory9Chart();
-            drawStory10Chart();
-            drawStory11Chart();
-            drawStory12Chart();
-        }
-
-        let resizeTimer;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(redrawAllCharts, 250);
-        });
-
-        // --- Chart Initialization ---
-        function initializeCharts() {
-            console.log("Initializing charts with available data...");
-            redrawAllCharts(); // Initial draw
-        }
-
-        // --- Story-Specific Drawing Functions ---
-
-        function drawStory1Chart() {
-            console.log("drawStory1Chart called");
-            const dataForChart = {
-                month_counts: (aggData && aggData.month_counts && Object.keys(aggData.month_counts).length > 0) ? aggData.month_counts : mockAggData.month_counts,
-                season_counts: (aggData && aggData.season_counts && Object.keys(aggData.season_counts).length > 0) ? aggData.season_counts : mockAggData.season_counts
-            };
-            const config = {
-                margin: { ...chartSettings.margin },
-                title: "Bigfoot Sightings by Month & Season",
-                lineColor: NYT_PALETTE.accentTeal,
-                areaColor: d3.color(NYT_PALETTE.accentTeal).copy({opacity: 0.2}).toString(),
-                barColor: "#d0d0d0"
-            };
-            renderLineAreaChart("#chart1", dataForChart, config);
-        }
-
-        function calculateChiSquared(observed, expected) {
-            if (observed.length !== expected.length || observed.length === 0) return null;
-            let chi2 = 0;
-            for (let i = 0; i < observed.length; i++) {
-                if (expected[i] === 0) return null;
-                chi2 += Math.pow(observed[i] - expected[i], 2) / expected[i];
+            // --- Resize Handling ---
+            function redrawAllCharts() {
+                console.log("Redrawing charts...");
+                drawStory1Chart();
+                drawStory2Chart();
+                drawStory3Chart();
+                drawStory4Chart();
+                drawStory5Chart();
+                drawStory6Chart();
+                drawStory7Chart();
+                drawStory8Chart();
+                drawStory9Chart();
+                drawStory10Chart();
+                drawStory11Chart();
+                drawStory12Chart();
             }
-            return chi2;
-        }
 
-        function getPValueApproximation(chi2Stat, df) {
-            if (df === 1) {
-                if (chi2Stat >= 10.83) return "< 0.001";
-                if (chi2Stat >= 6.63) return "< 0.01";
-                if (chi2Stat >= 3.84) return "< 0.05";
-                return "> 0.05";
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(redrawAllCharts, 250);
+            });
+
+            // --- Chart Initialization ---
+            function initializeCharts() {
+                console.log("Initializing charts with available data...");
+                redrawAllCharts(); // Initial draw
             }
-            return "N/A (df≠1)";
-        }
 
-        function drawStory2Chart() {
-            const rawDayNightData = (aggData && aggData.day_night_counts && Object.keys(aggData.day_night_counts).length > 0) ? aggData.day_night_counts : mockAggData.day_night_counts;
-            const pieDataForCalc = Object.entries(rawDayNightData)
-                .filter(([key]) => key.toLowerCase() !== 'unknown')
-                .map(([key, value]) => ({ name: key, value: +value }));
+            // --- Story-Specific Drawing Functions ---
 
-            let chi2Text = "χ² test not applicable";
-            if (pieDataForCalc.length === 2) {
-                const observedValues = pieDataForCalc.map(d => d.value);
-                const totalObserved = d3.sum(observedValues);
-                if (totalObserved > 0) {
-                    const expectedValues = [totalObserved / 2, totalObserved / 2];
-                    const chi2Stat = calculateChiSquared(observedValues, expectedValues);
-                    if (chi2Stat !== null) {
-                        const pValueApprox = getPValueApproximation(chi2Stat, 1);
-                        chi2Text = `Day vs. Night: χ² = ${chi2Stat.toFixed(2)}, approx. p ${pValueApprox}`;
-                    } else {
-                        chi2Text = "χ² test error.";
-                    }
+            function drawStory1Chart() {
+                console.log("drawStory1Chart called");
+                const dataForChart = {
+                    month_counts: (aggData && aggData.month_counts && Object.keys(aggData.month_counts).length > 0) ? aggData.month_counts : mockAggData.month_counts,
+                    season_counts: (aggData && aggData.season_counts && Object.keys(aggData.season_counts).length > 0) ? aggData.season_counts : mockAggData.season_counts
+                };
+                const config = {
+                    margin: { ...chartSettings.margin },
+                    title: "Bigfoot Sightings by Month & Season",
+                    lineColor: NYT_PALETTE.accentTeal,
+                    areaColor: d3.color(NYT_PALETTE.accentTeal).copy({opacity: 0.2}).toString(),
+                    barColor: "#d0d0d0"
+                };
+                renderLineAreaChart("#chart1", dataForChart, config);
+            }
+
+            function calculateChiSquared(observed, expected) {
+                if (observed.length !== expected.length || observed.length === 0) return null;
+                let chi2 = 0;
+                for (let i = 0; i < observed.length; i++) {
+                    if (expected[i] === 0) return null;
+                    chi2 += Math.pow(observed[i] - expected[i], 2) / expected[i];
                 }
-            } else if (pieDataForCalc.length > 0) {
-                 chi2Text = "χ² test only for Day/Night comparison.";
+                return chi2;
             }
 
-            const config = {
-                 margin: { top: 40, right: 20, bottom: 40, left: 20 },
-                 title: "Sightings: Night vs Day",
-                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray],
-                 chi2Annotation: chi2Text
-            };
-            const fullPieData = Object.entries(rawDayNightData).map(([key, value]) => ({ name: key, value: +value }));
-            renderPieChart("#chart2", fullPieData, config);
-        }
-
-        function drawStory3Chart() {
-            const timelineData = {
-                month_counts: (aggData && aggData.media_timeline_monthly && Object.keys(aggData.media_timeline_monthly).length > 0) ? aggData.media_timeline_monthly : mockAggData.media_timeline_monthly,
-                releases: (aggData && aggData.media_timeline_releases) ? aggData.media_timeline_releases : mockAggData.media_timeline_releases
-            };
-             const config = {
-                margin: { ...chartSettings.margin },
-                title: "Monthly Sightings & Hollywood Releases",
-                lineColor: NYT_PALETTE.accentTeal,
-                areaColor: d3.color(NYT_PALETTE.accentTeal).copy({opacity: 0.2}).toString(),
-                releaseMarkerColor: NYT_PALETTE.highlightOrange
-            };
-            renderLineAreaChart("#chart3", { month_counts: timelineData.month_counts, releases: timelineData.releases }, config);
-        }
-
-        function drawStory4Chart() {
-            const chartData = (aggData && aggData.witness_class_crosstab && Object.keys(aggData.witness_class_crosstab).length > 0) ? aggData.witness_class_crosstab : mockAggData.witness_class_crosstab;
-            const config = {
-                margin: { ...chartSettings.margin, right: 100 },
-                title: "Witness Group vs. Sighting Class"
-            };
-            renderStackedBarChart("#chart4", chartData, config);
-        }
-
-        function drawStory5Chart() {
-            const chartData = (aggData && aggData.environment_verb_edges && aggData.environment_verb_edges.length > 0) ? aggData.environment_verb_edges : mockAggData.environment_verb_edges;
-            const config = {
-                margin: { top: 30, right: 10, bottom: 10, left: 10 },
-                title: "Environment-Verb Network"
-            };
-            renderForceNetwork("#chart5", chartData, config);
-        }
-
-        function drawStory6Chart() {
-            const chartData = (aggData && aggData.season_word_freq && Object.keys(aggData.season_word_freq).length > 0) ? aggData.season_word_freq : mockAggData.season_word_freq;
-             const config = {
-                margin: { top: 20, right: 10, bottom: 20, left: 10 },
-            };
-            renderWordCloud("#chart6", chartData, config);
-        }
-
-        function drawStory7Chart() {
-            const dataForChart = (pointsData && pointsData.length > 0) ? pointsData : mockPointsData;
-            const config = {
-                margin: { ...chartSettings.margin, left: 70, bottom: 50 },
-                title: "Altitude vs. Sentiment",
-                xCol: 'derived_elev',
-                yCol: 'derived_sent',
-                showLoess: true,
-                loessBandwidth: 0.5
-            };
-            renderScatterPlot("#chart7", dataForChart, config);
-        }
-
-        function drawStory8Chart() {
-            const chartData = (aggData && aggData.delay_road_type_summary && Object.keys(aggData.delay_road_type_summary).length > 0) ? aggData.delay_road_type_summary : mockAggData.delay_road_type_summary;
-            const config = {
-                margin: { ...chartSettings.margin, left: 80, bottom: 80 },
-                title: "Reporting Delay by Road Type (Log Scale)",
-                yLabel: "Reporting Delay (days, log scale)"
-            };
-            renderBoxPlot("#chart8", chartData, config);
-        }
-
-        function drawStory9Chart() {
-            const rawPronounData = (aggData && aggData.pronoun_counts && Object.keys(aggData.pronoun_counts).length > 0) ? aggData.pronoun_counts : mockAggData.pronoun_counts;
-            const donutData = Object.entries(rawPronounData).map(([key, value]) => ({ name: key, value: +value }));
-            const config = {
-                 margin: { top: 40, right: 20, bottom: 40, left: 20 },
-                 title: "The Gender of Bigfoot: Pronoun Usage",
-                 isDonut: true,
-                 donutRadiusRatio: 0.6,
-                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray, "#b3a2c7", "#7fcdbb", "#edf8b1"]
-            };
-            renderPieChart("#chart9", donutData, config);
-        }
-
-        function drawStory10Chart() {
-            const prePostData = (aggData && aggData.pre_post_internet && Object.keys(aggData.pre_post_internet).length > 0) ? aggData.pre_post_internet : mockAggData.pre_post_internet;
-            const config = {
-                margin: { ...chartSettings.margin, top: 50, bottom:50 }, // Overall margin
-                title: "Online Storytelling Shift"
-            };
-
-            const svg = d3.select("#chart10");
-            svg.selectAll("*").remove();
-
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), config.margin, 0.8); // Slightly taller aspect ratio for two panels
-
-            const panelPadding = 40;
-            const panelWidth = (boundedWidth - panelPadding) / 2;
-
-            // Panel A: Stacked Bar for Class Summary
-            const classPanelGroup = svg.append("g")
-                .attr("transform", `translate(${config.margin.left},${config.margin.top})`);
-
-            if (prePostData.class_summary && Object.keys(prePostData.class_summary).length > 0) {
-                const classes = ['Class A', 'Class B', 'Class C'];
-                const classTransformedData = Object.entries(prePostData.class_summary).map(([era, counts]) => {
-                    const entry = { category: era.replace("_", " ") };
-                    classes.forEach(cls => {
-                        entry[cls] = (counts && counts[cls]) ? +counts[cls] : 0;
-                    });
-                    return entry;
-                }).sort((a,b) => a.category.localeCompare(b.category));
-
-                renderStackedBarChart(classPanelGroup, classTransformedData, {
-                    margin: { top: 30, right: 10, bottom: 60, left: 50 },
-                    title: "Sighting Class",
-                    xDomainKey: 'category',
-                    keys: classes,
-                    svgWidth: panelWidth,
-                    svgHeight: boundedHeight,
-                    aspectRatio: boundedHeight / panelWidth, // Calculate based on allocated space
-                    colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray]
-                });
-            } else {
-                classPanelGroup.append("text").attr("x", panelWidth/2).attr("y", boundedHeight/2).attr("text-anchor","middle").text("No class summary data.");
+            function getPValueApproximation(chi2Stat, df) {
+                if (df === 1) {
+                    if (chi2Stat >= 10.83) return "< 0.001";
+                    if (chi2Stat >= 6.63) return "< 0.01";
+                    if (chi2Stat >= 3.84) return "< 0.05";
+                    return "> 0.05";
+                }
+                return "N/A (df≠1)";
             }
 
-            // Panel B: Violin Plots for Narrative Length
-            const narrLenPanelGroup = svg.append("g")
-                .attr("transform", `translate(${config.margin.left + panelWidth + panelPadding},${config.margin.top})`);
+            function drawStory2Chart() {
+                const rawDayNightData = (aggData && aggData.day_night_counts && Object.keys(aggData.day_night_counts).length > 0) ? aggData.day_night_counts : mockAggData.day_night_counts;
+                const pieDataForCalc = Object.entries(rawDayNightData)
+                    .filter(([key]) => key.toLowerCase() !== 'unknown')
+                    .map(([key, value]) => ({ name: key, value: +value }));
 
-            if (prePostData.narr_len_summary && prePostData.narr_len_summary.pre_internet && prePostData.narr_len_summary.post_internet) {
-                const eras = ["pre_internet", "post_internet"];
-                 const narrLenXScale = d3.scaleBand().domain(eras.map(e => e.replace("_", " "))).range([0, panelWidth]).padding(0.2);
-                const violinPlotWidth = narrLenXScale.bandwidth();
-
-                eras.forEach(era => {
-                    const violinData = {
-                        values: prePostData.narr_len_summary[era].values,
-                        category: era.replace("_", " ")
-                    };
-                    if (violinData.values && violinData.values.length > 0) {
-                        const violinGroup = narrLenPanelGroup.append("g")
-                            .attr("transform", `translate(${narrLenXScale(violinData.category)},0)`); // Position each violin
-
-                        renderViolinPlot(violinGroup, violinData, {
-                            margin: { top: 30, right: 5, bottom: 60, left: 50 },
-                            title: "", // Sub-title handled by category
-                            color: era === "pre_internet" ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange,
-                            svgWidth: violinPlotWidth,
-                            svgHeight: boundedHeight,
-                            aspectRatio: boundedHeight / violinPlotWidth,
-                            kdeBins: 10,
-                            yAxisLabel: era === "pre_internet" ? "Narrative Length" : "" // Only one Y-axis label
-                        });
-                    } else {
-                         narrLenPanelGroup.append("text")
-                            .attr("x", narrLenXScale(era.replace("_"," ")) + violinPlotWidth/2)
-                            .attr("y", boundedHeight/2)
-                            .attr("text-anchor", "middle")
-                            .text(`No narr_len data for ${era.replace("_"," ")}`);
+                let chi2Text = "χ² test not applicable";
+                if (pieDataForCalc.length === 2) {
+                    const observedValues = pieDataForCalc.map(d => d.value);
+                    const totalObserved = d3.sum(observedValues);
+                    if (totalObserved > 0) {
+                        const expectedValues = [totalObserved / 2, totalObserved / 2];
+                        const chi2Stat = calculateChiSquared(observedValues, expectedValues);
+                        if (chi2Stat !== null) {
+                            const pValueApprox = getPValueApproximation(chi2Stat, 1);
+                            chi2Text = `Day vs. Night: χ² = ${chi2Stat.toFixed(2)}, approx. p ${pValueApprox}`;
+                        } else {
+                            chi2Text = "χ² test error.";
+                        }
                     }
-                });
-                 narrLenPanelGroup.append("text") // X-axis label for violins
-                    .attr("x", panelWidth / 2)
-                    .attr("y", boundedHeight + 45)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "12px")
-                    .text("Era");
+                } else if (pieDataForCalc.length > 0) {
+                     chi2Text = "χ² test only for Day/Night comparison.";
+                }
 
-            } else {
-                 narrLenPanelGroup.append("text").attr("x", panelWidth/2).attr("y", boundedHeight/2).attr("text-anchor","middle").text("No narrative length data.");
-            }
-             // Overall Title for Story 10
-            svg.append("text")
-                .attr("x", svgWidth / 2)
-                .attr("y", config.margin.top / 2)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title);
-        }
-
-        function drawStory11Chart() {
-            const chartData = (aggData && aggData.season_weather_matrix && Object.keys(aggData.season_weather_matrix).length > 0) ? aggData.season_weather_matrix : mockAggData.season_weather_matrix;
-            const config = {
-                margin: { ...chartSettings.margin, top:50, right: 80, bottom: 70, left: 70 }, // Adjust for legend & labels
-                title: "Weather Whispers: Season vs. Term",
-                xDomain: ["clear", "cloud", "fog", "rain", "snow", "sunny", "wind"], // Explicit order
-                yDomain: ["Spring", "Summer", "Fall", "Winter"]
-            };
-            renderHeatmap("#chart11", chartData, config);
-        }
-
-        function drawStory12Chart() {
-            const chartData = (aggData && aggData.county_sightings_population && aggData.county_sightings_population.length > 0) ? aggData.county_sightings_population : mockAggData.county_sightings_population;
-            const topoJsonUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
-            const config = {
-                margin: { top: 30, right: 10, bottom: 10, left: 10 },
-                title: "Where It Lurks: Sightings per 100k Population"
-            };
-            renderChoroplethMap("#chart12", topoJsonUrl, chartData, config);
-        }
-
-
-        // --- Reusable Chart Helper Functions ---
-        function getChartDimensions(svgNode, margin, aspectRatio = 0.6) {
-            const containerWidth = svgNode.parentNode.getBoundingClientRect().width;
-            let svgWidth = Math.max(300, containerWidth);
-            let svgHeight = svgWidth * aspectRatio;
-
-            // If svgNode is a <g> element (for subplots), use passed width/height from config
-            if (svgNode.tagName === 'g' && config && config.svgWidth && config.svgHeight) {
-                svgWidth = config.svgWidth;
-                svgHeight = config.svgHeight;
-            } else {
-                 d3.select(svgNode).attr("width", svgWidth).attr("height", svgHeight);
+                const config = {
+                     margin: { top: 40, right: 20, bottom: 40, left: 20 },
+                     title: "Sightings: Night vs Day",
+                     colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray],
+                     chi2Annotation: chi2Text
+                };
+                const fullPieData = Object.entries(rawDayNightData).map(([key, value]) => ({ name: key, value: +value }));
+                renderPieChart("#chart2", fullPieData, config);
             }
 
-            const boundedWidth = svgWidth - margin.left - margin.right;
-            const boundedHeight = svgHeight - margin.top - margin.bottom;
-            return { svgWidth, svgHeight, boundedWidth, boundedHeight };
-        }
-
-        function renderLineAreaChart(svgSelectorOrElement, chartData, config) {
-            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
-            svg.selectAll("*").remove();
-
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.5);
-
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-            if (!chartData || !chartData.month_counts || Object.keys(chartData.month_counts).length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
-                return;
+            function drawStory3Chart() {
+                const timelineData = {
+                    month_counts: (aggData && aggData.media_timeline_monthly && Object.keys(aggData.media_timeline_monthly).length > 0) ? aggData.media_timeline_monthly : mockAggData.media_timeline_monthly,
+                    releases: (aggData && aggData.media_timeline_releases) ? aggData.media_timeline_releases : mockAggData.media_timeline_releases
+                };
+                 const config = {
+                    margin: { ...chartSettings.margin },
+                    title: "Monthly Sightings & Hollywood Releases",
+                    lineColor: NYT_PALETTE.accentTeal,
+                    areaColor: d3.color(NYT_PALETTE.accentTeal).copy({opacity: 0.2}).toString(),
+                    releaseMarkerColor: NYT_PALETTE.highlightOrange
+                };
+                renderLineAreaChart("#chart3", { month_counts: timelineData.month_counts, releases: timelineData.releases }, config);
             }
 
-            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-            let processedMonthData;
-            const firstMonthKey = Object.keys(chartData.month_counts)[0];
-
-            const isTimeline = firstMonthKey && firstMonthKey.includes('-');
-
-            if (isTimeline) {
-                 processedMonthData = Object.entries(chartData.month_counts)
-                    .map(([yearMonth, count]) => ({ date: d3.timeParse("%Y-%m")(yearMonth), count: +count }))
-                    .filter(d => d.date)
-                    .sort((a,b) => a.date - b.date);
-            } else {
-                processedMonthData = Object.entries(chartData.month_counts)
-                    .map(([month, count]) => ({ month: +month, count: +count, monthName: monthNames[(+month)-1] }))
-                    .sort((a,b) => a.month - b.month);
+            function drawStory4Chart() {
+                const chartData = (aggData && aggData.witness_class_crosstab && Object.keys(aggData.witness_class_crosstab).length > 0) ? aggData.witness_class_crosstab : mockAggData.witness_class_crosstab;
+                const config = {
+                    margin: { ...chartSettings.margin, right: 100 },
+                    title: "Witness Group vs. Sighting Class"
+                };
+                renderStackedBarChart("#chart4", chartData, config);
             }
 
-            if (processedMonthData.length === 0) {
-                 g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No valid month data.");
-                return;
+            function drawStory5Chart() {
+                const chartData = (aggData && aggData.environment_verb_edges && aggData.environment_verb_edges.length > 0) ? aggData.environment_verb_edges : mockAggData.environment_verb_edges;
+                const config = {
+                    margin: { top: 30, right: 10, bottom: 10, left: 10 },
+                    title: "Environment-Verb Network"
+                };
+                renderForceNetwork("#chart5", chartData, config);
             }
 
-            const xScale = isTimeline ?
-                d3.scaleTime().domain(d3.extent(processedMonthData, d => d.date)).nice().range([0, boundedWidth]) :
-                d3.scaleBand().domain(processedMonthData.map(d => d.monthName)).range([0, boundedWidth]).padding(0.1);
-
-            const yMax = d3.max(processedMonthData, d => d.count) || 1;
-            const yScale = d3.scaleLinear().domain([0, yMax]).nice().range([boundedHeight, 0]);
-
-            if (chartData.season_counts && Object.keys(chartData.season_counts).length > 0 && !isTimeline && (svgSelector === "#chart1" || svg.attr("id") === "chart1")) {
-                const seasonOrder = ["Spring", "Summer", "Fall", "Winter"];
-                const seasonMonths = { "Spring": [3,4,5], "Summer": [6,7,8], "Fall": [9,10,11], "Winter": [12,1,2] };
-
-                const seasonBarData = seasonOrder.map(season => {
-                    const totalCount = seasonMonths[season].reduce((sum, monthIdx) => sum + (chartData.month_counts[monthIdx] || 0), 0);
-                    const firstMonthName = monthNames[seasonMonths[season][0]-1];
-                    const lastMonthName = monthNames[seasonMonths[season][seasonMonths[season].length-1]-1];
-
-                    const xStart = xScale(firstMonthName);
-                    const xEnd = xScale(lastMonthName) + xScale.bandwidth();
-
-                    return {
-                        name: season,
-                        count: chartData.season_counts[season] || 0,
-                        x: xStart,
-                        width: xEnd - xStart,
-                    };
-                }).filter(d => typeof d.x !== 'undefined' && d.width > 0);
-
-                const yMaxSeason = d3.max(Object.values(chartData.season_counts)) || yMax;
-                const yScaleBars = d3.scaleLinear().domain([0, yMaxSeason]).range([boundedHeight, 0]);
-
-                g.selectAll(".season-bar")
-                    .data(seasonBarData)
-                    .enter().append("rect")
-                    .attr("class", "season-bar")
-                    .attr("x", d => d.x)
-                    .attr("y", d => yScaleBars(d.count))
-                    .attr("width", d => d.width)
-                    .attr("height", d => boundedHeight - yScaleBars(d.count))
-                    .attr("fill", config.barColor || "#e0e0e0")
-                    .attr("opacity", 0.5)
-                    .on("mouseover", function(event, d) {
-                        showTooltip(event, `${d.name}: ${d.count} total sightings`);
-                    })
-                    .on("mousemove", moveTooltip)
-                    .on("mouseout", hideTooltip);
+            function drawStory6Chart() {
+                const chartData = (aggData && aggData.season_word_freq && Object.keys(aggData.season_word_freq).length > 0) ? aggData.season_word_freq : mockAggData.season_word_freq;
+                 const config = {
+                    margin: { top: 20, right: 10, bottom: 20, left: 10 },
+                };
+                renderWordCloud("#chart6", chartData, config);
             }
 
-            g.append("g")
-                .attr("class", "axis x-axis")
-                .attr("transform", `translate(0,${boundedHeight})`)
-                .call(isTimeline ? d3.axisBottom(xScale).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat("%Y")) : d3.axisBottom(xScale))
-                .selectAll("text")
-                .style("text-anchor", isTimeline ? "middle" : "end")
-                .attr("dx", isTimeline ? 0 : "-.8em")
-                .attr("dy", isTimeline ? "1em" : ".15em")
-                .attr("transform", isTimeline ? "none" : "rotate(-45)");
-
-            g.append("g")
-                .attr("class", "axis y-axis")
-                .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0).tickPadding(6));
-
-            g.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 15)
-                .attr("x", 0 - (boundedHeight / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("fill", NYT_PALETTE.midGray)
-                .text("Number of Sightings");
-
-            g.append("g")
-                .attr("class", "grid")
-                .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
-
-            const area = d3.area()
-                .x(d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
-                .y0(yScale(0))
-                .y1(d => yScale(d.count));
-
-            g.append("path")
-                .datum(processedMonthData)
-                .attr("fill", config.areaColor || "#8dc6ca")
-                .attr("d", area);
-
-            const line = d3.line()
-                .x(d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
-                .y(d => yScale(d.count));
-
-            g.append("path")
-                .datum(processedMonthData)
-                .attr("fill", "none")
-                .attr("stroke", config.lineColor || NYT_PALETTE.accentTeal)
-                .attr("stroke-width", 2)
-                .attr("d", line);
-
-            g.selectAll(".line-point")
-                .data(processedMonthData)
-                .enter().append("circle")
-                .attr("class", "line-point")
-                .attr("cx", d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
-                .attr("cy", d => yScale(d.count))
-                .attr("r", 3)
-                .attr("fill", config.lineColor || NYT_PALETTE.accentTeal)
-                .attr("stroke", NYT_PALETTE.softBackdrop)
-                .attr("stroke-width", 1)
-                .style("cursor", "pointer")
-                .on("mouseover", function(event, d) {
-                    d3.select(this).attr("r", 5);
-                    const label = isTimeline ? `${d3.timeFormat("%b %Y")(d.date)}: ${d.count}` : `${d.monthName}: ${d.count}`;
-                    showTooltip(event, `${label} sightings`);
-                })
-                .on("mousemove", moveTooltip)
-                .on("mouseout", function(event, d) {
-                    d3.select(this).attr("r", 3);
-                    hideTooltip();
-                });
-
-            if (isTimeline && chartData.releases) {
-                const releaseData = Object.entries(chartData.releases)
-                    .map(([year, eventName]) => ({ date: d3.timeParse("%Y")(year), eventName }))
-                    .filter(d => d.date && xScale(d.date) >= 0 && xScale(d.date) <= boundedWidth);
-
-                g.selectAll(".release-marker")
-                    .data(releaseData)
-                    .enter().append("line")
-                    .attr("class", "release-marker")
-                    .attr("x1", d => xScale(d.date))
-                    .attr("x2", d => xScale(d.date))
-                    .attr("y1", 0)
-                    .attr("y2", boundedHeight)
-                    .attr("stroke", config.releaseMarkerColor || NYT_PALETTE.highlightOrange)
-                    .attr("stroke-width", 1.5)
-                    .attr("stroke-dasharray", "4,2")
-                    .on("mouseover", function(event, d) {
-                        showTooltip(event, `${d3.timeFormat("%Y")(d.date)}: ${d.eventName}`);
-                    })
-                    .on("mousemove", moveTooltip)
-                    .on("mouseout", hideTooltip);
+            function drawStory7Chart() {
+                const dataForChart = (pointsData && pointsData.length > 0) ? pointsData : mockPointsData;
+                const config = {
+                    margin: { ...chartSettings.margin, left: 70, bottom: 50 },
+                    title: "Altitude vs. Sentiment",
+                    xCol: 'derived_elev',
+                    yCol: 'derived_sent',
+                    showLoess: true,
+                    loessBandwidth: 0.5
+                };
+                renderScatterPlot("#chart7", dataForChart, config);
             }
 
-            svg.append("text")
-                .attr("x", (margin.left + boundedWidth / 2))
-                .attr("y", margin.top / 2)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
-        }
-
-        function renderPieChart(svgSelectorOrElement, data, config) {
-            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
-            svg.selectAll("*").remove();
-
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.8);
-
-            const radius = Math.min(boundedWidth, boundedHeight) / 2 * 0.8;
-            const g = svg.append("g").attr("transform", `translate(${svgWidth / 2},${svgHeight / 2 - (config.chi2Annotation ? 10 : 0)})`);
-
-            if (!data || data.length === 0) {
-                 g.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").text("No data for chart.");
-                return;
+            function drawStory8Chart() {
+                const chartData = (aggData && aggData.delay_road_type_summary && Object.keys(aggData.delay_road_type_summary).length > 0) ? aggData.delay_road_type_summary : mockAggData.delay_road_type_summary;
+                const config = {
+                    margin: { ...chartSettings.margin, left: 80, bottom: 80 },
+                    title: "Reporting Delay by Road Type (Log Scale)",
+                    yLabel: "Reporting Delay (days, log scale)"
+                };
+                renderBoxPlot("#chart8", chartData, config);
             }
 
-            const color = d3.scaleOrdinal(config.colors || [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray])
-                            .domain(data.map(d => d.name));
-
-            const pie = d3.pie().value(d => d.value).sort(null);
-            const arcGenerator = d3.arc().innerRadius(config.isDonut ? radius * (config.donutRadiusRatio || 0.6) : 0).outerRadius(radius);
-
-            const arcs = g.selectAll(".arc")
-                .data(pie(data))
-                .enter().append("g")
-                .attr("class", "arc");
-
-            arcs.append("path")
-                .attr("d", arcGenerator)
-                .attr("fill", d => color(d.data.name))
-                .attr("stroke", NYT_PALETTE.softBackdrop)
-                .style("stroke-width", "2px")
-                .on("mouseover", function(event, d) {
-                    d3.select(this).transition().duration(50).attr("opacity", 0.8);
-                    const percent = (d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1);
-                    showTooltip(event, `${d.data.name}: ${d.data.value} (${percent}%)`);
-                })
-                .on("mousemove", moveTooltip)
-                .on("mouseout", function(event, d) {
-                    d3.select(this).transition().duration(50).attr("opacity", 1);
-                    hideTooltip();
-                });
-
-            const legendGroup = svg.append("g")
-                .attr("class", "legend-group")
-                .attr("transform", `translate(${svgWidth / 2}, ${svgHeight / 2 + radius + 20})`);
-
-            const legend = legendGroup.selectAll(".legend-item")
-                .data(pie(data))
-                .enter().append("g")
-                .attr("class", "legend-item")
-                .attr("transform", (d, i, nodes) => {
-                    const itemWidth = 100;
-                    const itemsPerRow = Math.max(1, Math.floor(boundedWidth / itemWidth));
-                    const col = i % itemsPerRow;
-                    const row = Math.floor(i / itemsPerRow);
-                    const xOffset = col * itemWidth - (itemsPerRow -1) * itemWidth / 2;
-                    const yOffset = row * 20;
-                    return `translate(${xOffset}, ${yOffset})`;
-                });
-
-            legend.append("rect")
-                .attr("x", -radius * 0.8)
-                .attr("y", 0)
-                .attr("width", 12)
-                .attr("height", 12)
-                .style("fill", d => color(d.data.name));
-
-            legend.append("text")
-                .attr("x", -radius * 0.8 + 18)
-                .attr("y", 9)
-                .attr("dy", "0.1em")
-                .style("text-anchor", "start")
-                .style("font-size", "11px")
-                .text(d => `${d.data.name} (${(d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1)}%)`);
-
-            if (config.chi2Annotation) {
-                 svg.append("text")
-                    .attr("x", svgWidth / 2)
-                    .attr("y", svgHeight - 5)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "10px")
-                    .style("fill", NYT_PALETTE.midGray)
-                    .text(config.chi2Annotation);
+            function drawStory9Chart() {
+                const rawPronounData = (aggData && aggData.pronoun_counts && Object.keys(aggData.pronoun_counts).length > 0) ? aggData.pronoun_counts : mockAggData.pronoun_counts;
+                const donutData = Object.entries(rawPronounData).map(([key, value]) => ({ name: key, value: +value }));
+                const config = {
+                     margin: { top: 40, right: 20, bottom: 40, left: 20 },
+                     title: "The Gender of Bigfoot: Pronoun Usage",
+                     isDonut: true,
+                     donutRadiusRatio: 0.6,
+                     colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray, "#b3a2c7", "#7fcdbb", "#edf8b1"]
+                };
+                renderPieChart("#chart9", donutData, config);
             }
 
-            svg.append("text")
-                .attr("x", (svgWidth / 2))
-                .attr("y", margin.top / 1.5)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
-        }
+            function drawStory10Chart() {
+                const prePostData = (aggData && aggData.pre_post_internet && Object.keys(aggData.pre_post_internet).length > 0) ? aggData.pre_post_internet : mockAggData.pre_post_internet;
+                const config = {
+                    margin: { ...chartSettings.margin, top: 50, bottom:50 }, // Overall margin
+                    title: "Online Storytelling Shift"
+                };
 
-        function renderStackedBarChart(svgSelectorOrElement, data, config) { // Can take element or selector
-            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
-            const isSubPlot = svg.node().tagName === 'g';
-            if (!isSubPlot) svg.selectAll("*").remove(); // Clear only if it's the main SVG
+                const svg = d3.select("#chart10");
+                svg.selectAll("*").remove();
 
-            const margin = config.margin || chartSettings.margin;
-            let svgForDims = isSubPlot ? d3.select(svg.node().ownerSVGElement) : svg;
-            if (config.svgWidth && config.svgHeight && isSubPlot) { // Use provided dimensions for subplots
-                 // For subplots, dimensions are relative to the group, not the whole SVG
-            } else {
-                svgForDims = svg; // Use the main SVG for dimensioning
-            }
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svgForDims.node(), margin, config.aspectRatio || 0.6);
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), config.margin, 0.8);
 
-            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-            if (isSubPlot) g.selectAll("*").remove(); // Clear group if it's a sub-plot
+                const panelPadding = 40;
+                const panelWidth = (boundedWidth - panelPadding) / 2;
+
+                const classPanelGroup = svg.append("g")
+                    .attr("transform", `translate(${config.margin.left},${config.margin.top})`);
+
+                if (prePostData.class_summary && Object.keys(prePostData.class_summary).length > 0) {
+                    const classes = ['Class A', 'Class B', 'Class C'];
+                    const classTransformedData = Object.entries(prePostData.class_summary).map(([era, counts]) => {
+                        const entry = { category: era.replace("_", " ") };
+                        classes.forEach(cls => {
+                            entry[cls] = (counts && counts[cls]) ? +counts[cls] : 0;
+                        });
+                        return entry;
+                    }).sort((a,b) => a.category.localeCompare(b.category));
+
+                    renderStackedBarChart(classPanelGroup, classTransformedData, {
+                        margin: { top: 30, right: 10, bottom: 60, left: 50 },
+                        title: "Sighting Class",
+                        xDomainKey: 'category',
+                        keys: classes,
+                        svgWidth: panelWidth,
+                        svgHeight: boundedHeight,
+                        aspectRatio: boundedHeight / panelWidth,
+                        colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray]
+                    });
+                } else {
+                    classPanelGroup.append("text").attr("x", panelWidth/2).attr("y", boundedHeight/2).attr("text-anchor","middle").text("No class summary data.");
+                }
+
+                const narrLenPanelGroup = svg.append("g")
+                    .attr("transform", `translate(${config.margin.left + panelWidth + panelPadding},${config.margin.top})`);
+
+                if (prePostData.narr_len_summary && prePostData.narr_len_summary.pre_internet && prePostData.narr_len_summary.post_internet) {
+                    const eras = ["pre_internet", "post_internet"];
+                     const narrLenXScale = d3.scaleBand().domain(eras.map(e => e.replace("_", " "))).range([0, panelWidth]).padding(0.3); // Increased padding
+
+                    eras.forEach(era => {
+                        const violinData = {
+                            values: prePostData.narr_len_summary[era].values,
+                            category: era.replace("_", " ")
+                        };
+                        if (violinData.values && violinData.values.length > 0) {
+                            const violinPlotWidth = narrLenXScale.bandwidth();
+                            const violinGroup = narrLenPanelGroup.append("g")
+                                .attr("transform", `translate(${narrLenXScale(violinData.category)},0)`);
+
+                            renderViolinPlot(violinGroup, violinData, {
+                                margin: { top: 30, right: 0, bottom: 60, left: (era === "pre_internet" ? 50 : 10) }, // Only left Y axis for first violin
+                                title: "",
+                                color: era === "pre_internet" ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange,
+                                svgWidth: violinPlotWidth,
+                                svgHeight: boundedHeight,
+                                aspectRatio: boundedHeight / violinPlotWidth,
+                                kdeBins: 10,
+                                showYAxis: era === "pre_internet" // Only show Y axis for the first plot
+                            });
+                        } else {
+                             narrLenPanelGroup.append("text")
+                                .attr("x", narrLenXScale(era.replace("_"," ")) + (narrLenXScale.bandwidth()/2))
+                                .attr("y", boundedHeight/2)
+                                .attr("text-anchor", "middle")
+                                .text(`No narr_len data for ${era.replace("_"," ")}`);
+                        }
+                    });
+                     narrLenPanelGroup.append("text")
+                        .attr("x", panelWidth / 2)
+                        .attr("y", boundedHeight + 45) // Positioned below violins
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "12px")
+                        .text("Era");
+
+                    // Shared Y-axis label for violin plots (placed centrally for the panel)
+                    svg.append("text") // Append to main SVG to position correctly relative to both panels
+                        .attr("transform", `translate(${config.margin.left + panelWidth + panelPadding - 50}, ${config.margin.top + boundedHeight/2}) rotate(-90)`)
+                        .attr("dy", "-1em") // Adjust to clear axis ticks
+                        .style("text-anchor", "middle")
+                        .style("font-size", "12px")
+                        .style("fill", NYT_PALETTE.midGray)
+                        .text("Narrative Length");
 
 
-            if (!data || data.length === 0 || (Array.isArray(data) && data.every(d => Object.keys(d).length <=1 )) ) { // Check if data has more than just category key
-                g.append("text").attr("x", (isSubPlot? config.svgWidth : boundedWidth) / 2).attr("y", (isSubPlot ? config.svgHeight : boundedHeight) / 2).attr("text-anchor", "middle").text("No data for stacked bar chart.");
-                return;
-            }
-
-            const categories = data.map(d => d[config.xDomainKey || 'category']);
-            const stackKeys = config.keys || Object.keys(data[0]).filter(k => k !== (config.xDomainKey || 'category'));
-
-            const stack = d3.stack().keys(stackKeys);
-            const series = stack(data);
-
-            const xScale = d3.scaleBand()
-                .domain(categories)
-                .range([0, isSubPlot ? config.svgWidth - margin.left - margin.right : boundedWidth])
-                .padding(0.25);
-
-            const yScale = d3.scaleLinear()
-                .domain([0, d3.max(series, d => d3.max(d, s => s[1])) || 1])
-                .nice()
-                .range([isSubPlot ? config.svgHeight - margin.top - margin.bottom : boundedHeight, 0]);
-
-            const color = d3.scaleOrdinal(config.colors || d3.schemeTableau10)
-                .domain(stackKeys);
-
-            g.append("g")
-                .attr("class", "axis x-axis")
-                .attr("transform", `translate(0,${isSubPlot ? config.svgHeight - margin.top - margin.bottom : boundedHeight})`)
-                .call(d3.axisBottom(xScale).tickSizeOuter(0));
-
-            g.append("g")
-                .attr("class", "axis y-axis")
-                .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
-
-            g.append("g")
-                .attr("class", "grid")
-                .call(d3.axisLeft(yScale).ticks(5).tickSize(-(isSubPlot ? config.svgWidth - margin.left - margin.right : boundedWidth)).tickFormat(""));
-
-            const groups = g.selectAll(".bargroup")
-                .data(series)
-                .enter().append("g")
-                .attr("class", "bargroup")
-                .attr("fill", d => color(d.key));
-
-            groups.selectAll("rect")
-                .data(d => d)
-                .enter().append("rect")
-                .attr("x", d => xScale(d.data[config.xDomainKey || 'category']))
-                .attr("y", d => yScale(d[1]))
-                .attr("height", d => Math.max(0, yScale(d[0]) - yScale(d[1])))
-                .attr("width", xScale.bandwidth())
-                .on("mouseover", function(event, d_bar) {
-                    const seriesData = d3.select(this.parentNode).datum();
-                    const categoryValue = d_bar.data[config.xDomainKey || 'category'];
-                    const barValue = d_bar.data[seriesData.key];
-                    showTooltip(event, `${seriesData.key} (${categoryValue}): ${barValue}`);
-                })
-                .on("mousemove", moveTooltip)
-                .on("mouseout", hideTooltip);
-
-            if (!isSubPlot) { // Only add legend and main title if it's not a subplot
-                const legend = svg.selectAll(".legend")
-                    .data(stackKeys)
-                    .enter().append("g")
-                    .attr("class", "legend")
-                    .attr("transform", (d, i) => `translate(${boundedWidth + margin.left + 15},${margin.top + i * 20})`);
-
-                legend.append("rect")
-                    .attr("x", 0)
-                    .attr("width", 12)
-                    .attr("height", 12)
-                    .style("fill", color);
-
-                legend.append("text")
-                    .attr("x", 18)
-                    .attr("y", 9)
-                    .attr("dy", ".35em")
-                    .style("text-anchor", "start")
-                    .style("font-size","11px")
-                    .text(d => d);
-
+                } else {
+                     narrLenPanelGroup.append("text").attr("x", panelWidth/2).attr("y", boundedHeight/2).attr("text-anchor","middle").text("No narrative length data.");
+                }
                 svg.append("text")
-                    .attr("x", (margin.left + boundedWidth / 2))
-                    .attr("y", margin.top / 2)
+                    .attr("x", svgWidth / 2)
+                    .attr("y", config.margin.top / 2)
                     .attr("text-anchor", "middle")
                     .style("font-size", "16px")
-                    .style("font-family", "var(--font-heading)")
-                    .text(config.title || "Chart Title");
-            } else { // If subplot, add its specific title
-                 g.append("text")
-                    .attr("x", (config.svgWidth - margin.left - margin.right) / 2)
-                    .attr("y", -margin.top / 2 + 5)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "12px")
                     .style("font-family", "var(--font-heading)")
                     .text(config.title);
             }
-        }
 
-        function renderForceNetwork(svgSelector, data, config) {
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.7);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-            if (!data || data.length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for force network.");
-                return;
+            function drawStory11Chart() {
+                const chartData = (aggData && aggData.season_weather_matrix && Object.keys(aggData.season_weather_matrix).length > 0) ? aggData.season_weather_matrix : mockAggData.season_weather_matrix;
+                const config = {
+                    margin: { ...chartSettings.margin, top:50, right: 80, bottom: 70, left: 70 },
+                    title: "Weather Whispers: Season vs. Term",
+                    xDomain: ["clear", "cloud", "fog", "rain", "snow", "sunny", "wind"],
+                    yDomain: ["Spring", "Summer", "Fall", "Winter"]
+                };
+                renderHeatmap("#chart11", chartData, config);
             }
 
-            const nodesMap = new Map();
-            data.forEach(link => {
-                if (!nodesMap.has(link.source)) nodesMap.set(link.source, {id: link.source, name: link.source, type: 'environment', degree: 0});
-                if (!nodesMap.has(link.target)) nodesMap.set(link.target, {id: link.target, name: link.target, type: 'verb', degree: 0});
-                nodesMap.get(link.source).degree += (link.value || 1);
-                nodesMap.get(link.target).degree += (link.value || 1);
-            });
-            const nodes = Array.from(nodesMap.values());
-            const links = data.map(d => ({...d}));
+            function drawStory12Chart() {
+                const chartData = (aggData && aggData.county_sightings_population && aggData.county_sightings_population.length > 0) ? aggData.county_sightings_population : mockAggData.county_sightings_population;
+                const topoJsonUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+                const config = {
+                    margin: { top: 30, right: 10, bottom: 10, left: 10 },
+                    title: "Where It Lurks: Sightings per 100k Population"
+                };
+                renderChoroplethMap("#chart12", topoJsonUrl, chartData, config);
+            }
 
-            const simulation = d3.forceSimulation(nodes)
-                .force("link", d3.forceLink(links).id(d => d.id).strength(d => 0.01 + (d.value || 1) / 50).distance(d => 100 - (d.value || 1)))
-                .force("charge", d3.forceManyBody().strength(-100 - nodes.length * 2))
-                .force("center", d3.forceCenter(boundedWidth / 2, boundedHeight / 2))
-                .force("x", d3.forceX(boundedWidth / 2).strength(0.03))
-                .force("y", d3.forceY(boundedHeight / 2).strength(0.03));
 
-            const maxDegree = Math.max(1, d3.max(nodes, d => d.degree));
-            const nodeRadiusScale = d3.scaleSqrt().domain([1, maxDegree]).range([3, 12]);
-
-            const link = g.append("g")
-                .attr("stroke", NYT_PALETTE.hairline)
-                .attr("stroke-opacity", 0.4)
-                .selectAll("line")
-                .data(links)
-                .join("line")
-                .attr("stroke-width", d => Math.max(0.5, Math.sqrt(d.value || 1)/2));
-
-            const node = g.append("g")
-                .selectAll("circle")
-                .data(nodes)
-                .join("circle")
-                .attr("r", d => nodeRadiusScale(d.degree) || 3)
-                .attr("fill", d => d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange)
-                .attr("stroke", d => d3.color(d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange).darker(0.5))
-                .attr("stroke-width", 1)
-                .call(drag(simulation))
-                 .on("mouseover", function(event, d) {
-                    d3.select(this).attr("stroke-width", 2.5);
-                    showTooltip(event, `${d.type === 'environment' ? 'Env' : 'Verb'}: ${d.name}<br>Connections: ${d.degree}`);
-                })
-                .on("mousemove", moveTooltip)
-                .on("mouseout", function(event,d){
-                    d3.select(this).attr("stroke-width", 1.5);
-                    hideTooltip();
-                });
-
-            const labels = g.append("g")
-                .selectAll("text")
-                .data(nodes)
-                .join("text")
-                .attr("dx", d => (nodeRadiusScale(d.degree) || 3) + 4)
-                .attr("dy", "0.35em")
-                .style("font-size", "9px")
-                .style("fill", NYT_PALETTE.midGray)
-                .text(d => d.name);
-
-            simulation.on("tick", () => {
-                link
-                    .attr("x1", d => d.source.x)
-                    .attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x)
-                    .attr("y2", d => d.target.y);
-                node
-                    .attr("cx", d => d.x)
-                    .attr("cy", d => d.y);
-                labels
-                    .attr("x", d => d.x)
-                    .attr("y", d => d.y);
-            });
-
-            function drag(simulation) {
-                function dragstarted(event, d) {
-                    if (!event.active) simulation.alphaTarget(0.3).restart();
-                    d.fx = d.x;
-                    d.fy = d.y;
+            // --- Reusable Chart Helper Functions ---
+            function getChartDimensions(svgNode, margin, aspectRatio = 0.6, subPlotConfig = null) {
+                let svgWidth, svgHeight;
+                if (subPlotConfig && subPlotConfig.svgWidth && subPlotConfig.svgHeight) {
+                    svgWidth = subPlotConfig.svgWidth;
+                    svgHeight = subPlotConfig.svgHeight;
+                } else {
+                    const containerWidth = svgNode.parentNode.getBoundingClientRect().width;
+                    svgWidth = Math.max(300, containerWidth);
+                    svgHeight = svgWidth * aspectRatio;
+                    d3.select(svgNode).attr("width", svgWidth).attr("height", svgHeight);
                 }
-                function dragged(event, d) {
-                    d.fx = event.x;
-                    d.fy = event.y;
-                }
-                function dragended(event, d) {
-                    if (!event.active) simulation.alphaTarget(0);
-                    d.fx = null;
-                    d.fy = null;
-                }
-                return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+
+                const boundedWidth = svgWidth - margin.left - margin.right;
+                const boundedHeight = svgHeight - margin.top - margin.bottom;
+                return { svgWidth, svgHeight, boundedWidth, boundedHeight };
             }
 
-            svg.append("text")
-                .attr("x", (svgWidth / 2))
-                .attr("y", margin.top / 1.5)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
-        }
+            function renderLineAreaChart(svgSelectorOrElement, chartData, config) {
+                const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+                const isSubPlot = svg.node().tagName === 'g';
+                if (!isSubPlot) svg.selectAll("*").remove();
+                else svg.selectAll("*").remove(); // Clear group if subplot
 
-        function renderWordCloud(svgSelector, data, config) {
-            console.log(`Rendering WordCloud for ${svgSelector}`);
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
-            const margin = config.margin || {top:20, right:10, bottom:20, left:10};
+                const margin = config.margin || chartSettings.margin;
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(
+                    isSubPlot ? svg.node().ownerSVGElement : svg.node(),
+                    margin,
+                    config.aspectRatio || 0.5,
+                    isSubPlot ? config : null
+                );
 
-            const seasons = ["Spring", "Summer", "Fall", "Winter"];
-            const numCols = 2;
-            const numRows = 2;
-
-            const parentNode = svg.node().parentNode;
-            const containerWidth = parentNode.getBoundingClientRect().width;
-
-            const totalSvgWidth = Math.max(300, containerWidth);
-            const singleCloudAspectRatio = 0.8;
-            const horizontalPadding = 20;
-            const verticalPadding = 40;
-
-            const singleCloudWidth = (totalSvgWidth - margin.left - margin.right - (numCols - 1) * horizontalPadding) / numCols;
-            const singleCloudHeight = singleCloudWidth * singleCloudAspectRatio;
-            const totalSvgHeight = (singleCloudHeight * numRows) + (margin.top + margin.bottom) + (numRows - 1) * verticalPadding;
-
-            svg.attr("width", totalSvgWidth).attr("height", totalSvgHeight);
-
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-            if (!data || Object.keys(data).length === 0 || !Object.values(data).some(seasonWords => seasonWords && Object.keys(seasonWords).length > 0) ) {
-                 g.append("text")
-                    .attr("x", (totalSvgWidth - margin.left - margin.right) / 2)
-                    .attr("y", (totalSvgHeight - margin.top - margin.bottom) / 2)
-                    .attr("text-anchor", "middle")
-                    .text("No data for word clouds.");
-                return;
-            }
-
-            if (typeof d3.layout === "undefined" || typeof d3.layout.cloud === "undefined") {
-                g.append("text").attr("x", 10).attr("y", 40).text("d3.layout.cloud not found!").style("fill", "red");
-                console.error('d3.layout.cloud is not available. Check CDN and D3 version compatibility.');
-                return;
-            }
-
-            const colorScale = d3.scaleOrdinal([NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, "#7aa25c", "#6a7985"]);
+                const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                if (isSubPlot) g.selectAll("*").remove(); // Re-clear if it's a group that might have old titles etc.
 
 
-            seasons.forEach((season, i) => {
-                const words = data[season] ? Object.entries(data[season]).map(([text, size]) => ({text, size: +size})) : [];
-
-                const colIndex = i % numCols;
-                const rowIndex = Math.floor(i / numCols);
-
-                const cloudX = colIndex * (singleCloudWidth + horizontalPadding);
-                const cloudY = rowIndex * (singleCloudHeight + verticalPadding);
-
-                const cloudGroup = g.append("g")
-                    .attr("transform", `translate(${cloudX},${cloudY})`);
-
-                cloudGroup.append("text")
-                    .attr("x", singleCloudWidth / 2)
-                    .attr("y", -5)
-                    .attr("text-anchor", "middle")
-                    .style("font-family", "var(--font-heading)")
-                    .style("font-size", "14px")
-                    .style("fill", NYT_PALETTE.charcoal)
-                    .text(season);
-
-                if (words.length === 0) {
-                    cloudGroup.append("text")
-                        .attr("x", singleCloudWidth/2)
-                        .attr("y", singleCloudHeight/2)
-                        .attr("text-anchor", "middle")
-                        .style("font-size", "10px")
-                        .text("No words");
+                if (!chartData || !chartData.month_counts || Object.keys(chartData.month_counts).length === 0) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for chart.");
                     return;
                 }
 
-                const maxFreq = d3.max(words, d => d.size) || 1;
-                const fontSizeScale = d3.scaleSqrt().domain([d3.min(words, d => d.size) || 1, maxFreq]).range([10, Math.min(40, singleCloudHeight/4)]);
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-                d3.layout.cloud().size([singleCloudWidth, singleCloudHeight])
-                    .words(words.map(d => ({text: d.text, size: fontSizeScale(d.size), originalSize: d.size })))
-                    .padding(3)
-                    .rotate(() => Math.random() > 0.7 ? 0 : (~~(Math.random() * 2) * 90))
-                    .font("var(--font-body)")
-                    .fontSize(d => d.size)
-                    .on("end", (drawnWords) => {
-                        cloudGroup.append("g")
-                            .attr("transform", `translate(${singleCloudWidth / 2},${singleCloudHeight / 2 + 10})`)
-                            .selectAll("text")
-                            .data(drawnWords)
-                            .enter().append("text")
-                            .style("font-size", d => `${d.size}px`)
-                            .style("font-family", "var(--font-body)")
-                            .style("fill", colorScale(season))
-                            .attr("text-anchor", "middle")
-                            .attr("transform", d => `translate(${[d.x, d.y]})rotate(${d.rotate})`)
-                            .text(d => d.text)
-                            .on("mouseover", function(event, d_word) {
-                                showTooltip(event, `${d_word.text}: ${d_word.originalSize}`);
-                            })
-                            .on("mousemove", moveTooltip)
-                            .on("mouseout", hideTooltip);
+                let processedMonthData;
+                const firstMonthKey = Object.keys(chartData.month_counts)[0];
+
+                const isTimeline = firstMonthKey && firstMonthKey.includes('-');
+
+                if (isTimeline) {
+                     processedMonthData = Object.entries(chartData.month_counts)
+                        .map(([yearMonth, count]) => ({ date: d3.timeParse("%Y-%m")(yearMonth), count: +count }))
+                        .filter(d => d.date)
+                        .sort((a,b) => a.date - b.date);
+                } else {
+                    processedMonthData = Object.entries(chartData.month_counts)
+                        .map(([month, count]) => ({ month: +month, count: +count, monthName: monthNames[(+month)-1] }))
+                        .sort((a,b) => a.month - b.month);
+                }
+
+                if (processedMonthData.length === 0) {
+                     g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No valid month data.");
+                    return;
+                }
+
+                const xScale = isTimeline ?
+                    d3.scaleTime().domain(d3.extent(processedMonthData, d => d.date)).nice().range([0, boundedWidth]) :
+                    d3.scaleBand().domain(processedMonthData.map(d => d.monthName)).range([0, boundedWidth]).padding(0.1);
+
+                const yMax = d3.max(processedMonthData, d => d.count) || 1;
+                const yScale = d3.scaleLinear().domain([0, yMax]).nice().range([boundedHeight, 0]);
+
+                if (chartData.season_counts && Object.keys(chartData.season_counts).length > 0 && !isTimeline && (svgSelector === "#chart1" || (svg.node().id || svg.node().parentNode.id) === "chart1")) {
+                    const seasonOrder = ["Spring", "Summer", "Fall", "Winter"];
+                    const seasonMonths = { "Spring": [3,4,5], "Summer": [6,7,8], "Fall": [9,10,11], "Winter": [12,1,2] };
+
+                    const seasonBarData = seasonOrder.map(season => {
+                        const totalCount = seasonMonths[season].reduce((sum, monthIdx) => sum + (chartData.month_counts[monthIdx] || 0), 0);
+                        const firstMonthName = monthNames[seasonMonths[season][0]-1];
+                        const lastMonthName = monthNames[seasonMonths[season][seasonMonths[season].length-1]-1];
+
+                        const xStart = xScale(firstMonthName);
+                        const xEnd = xScale(lastMonthName) + xScale.bandwidth();
+
+                        return {
+                            name: season,
+                            count: chartData.season_counts[season] || 0,
+                            x: xStart,
+                            width: xEnd - xStart,
+                        };
+                    }).filter(d => typeof d.x !== 'undefined' && d.width > 0);
+
+                    const yMaxSeason = d3.max(Object.values(chartData.season_counts)) || yMax;
+                    const yScaleBars = d3.scaleLinear().domain([0, yMaxSeason]).range([boundedHeight, 0]);
+
+                    g.selectAll(".season-bar")
+                        .data(seasonBarData)
+                        .enter().append("rect")
+                        .attr("class", "season-bar")
+                        .attr("x", d => d.x)
+                        .attr("y", d => yScaleBars(d.count))
+                        .attr("width", d => d.width)
+                        .attr("height", d => boundedHeight - yScaleBars(d.count))
+                        .attr("fill", config.barColor || "#e0e0e0")
+                        .attr("opacity", 0.5)
+                        .on("mouseover", function(event, d) {
+                            showTooltip(event, `${d.name}: ${d.count} total sightings`);
+                        })
+                        .on("mousemove", moveTooltip)
+                        .on("mouseout", hideTooltip);
+                }
+
+                g.append("g")
+                    .attr("class", "axis x-axis")
+                    .attr("transform", `translate(0,${boundedHeight})`)
+                    .call(isTimeline ? d3.axisBottom(xScale).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat("%Y")) : d3.axisBottom(xScale))
+                    .selectAll("text")
+                    .style("text-anchor", isTimeline ? "middle" : "end")
+                    .attr("dx", isTimeline ? 0 : "-.8em")
+                    .attr("dy", isTimeline ? "1em" : ".15em")
+                    .attr("transform", isTimeline ? "none" : "rotate(-45)");
+
+                g.append("g")
+                    .attr("class", "axis y-axis")
+                    .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0).tickPadding(6));
+
+                g.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 0 - margin.left + 15)
+                    .attr("x", 0 - (boundedHeight / 2))
+                    .attr("dy", "1em")
+                    .style("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("fill", NYT_PALETTE.midGray)
+                    .text("Number of Sightings");
+
+                g.append("g")
+                    .attr("class", "grid")
+                    .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
+
+                const area = d3.area()
+                    .x(d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
+                    .y0(yScale(0))
+                    .y1(d => yScale(d.count));
+
+                g.append("path")
+                    .datum(processedMonthData)
+                    .attr("fill", config.areaColor || "#8dc6ca")
+                    .attr("d", area);
+
+                const line = d3.line()
+                    .x(d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
+                    .y(d => yScale(d.count));
+
+                g.append("path")
+                    .datum(processedMonthData)
+                    .attr("fill", "none")
+                    .attr("stroke", config.lineColor || NYT_PALETTE.accentTeal)
+                    .attr("stroke-width", 2)
+                    .attr("d", line);
+
+                g.selectAll(".line-point")
+                    .data(processedMonthData)
+                    .enter().append("circle")
+                    .attr("class", "line-point")
+                    .attr("cx", d => isTimeline ? xScale(d.date) : xScale(d.monthName) + xScale.bandwidth() / 2)
+                    .attr("cy", d => yScale(d.count))
+                    .attr("r", 3)
+                    .attr("fill", config.lineColor || NYT_PALETTE.accentTeal)
+                    .attr("stroke", NYT_PALETTE.softBackdrop)
+                    .attr("stroke-width", 1)
+                    .style("cursor", "pointer")
+                    .on("mouseover", function(event, d) {
+                        d3.select(this).attr("r", 5);
+                        const label = isTimeline ? `${d3.timeFormat("%b %Y")(d.date)}: ${d.count}` : `${d.monthName}: ${d.count}`;
+                        showTooltip(event, `${label} sightings`);
                     })
-                    .start();
-            });
-        }
+                    .on("mousemove", moveTooltip)
+                    .on("mouseout", function(event, d) {
+                        d3.select(this).attr("r", 3);
+                        hideTooltip();
+                    });
 
-        function renderScatterPlot(svgSelectorOrElement, data, config) {
-            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
-            const isSubPlot = svg.node().tagName === 'g';
-            if (!isSubPlot) svg.selectAll("*").remove();
-            else g.selectAll("*").remove(); // Clear group if subplot
+                if (isTimeline && chartData.releases) {
+                    const releaseData = Object.entries(chartData.releases)
+                        .map(([year, eventName]) => ({ date: d3.timeParse("%Y")(year), eventName }))
+                        .filter(d => d.date && xScale(d.date) >= 0 && xScale(d.date) <= boundedWidth);
 
+                    g.selectAll(".release-marker")
+                        .data(releaseData)
+                        .enter().append("line")
+                        .attr("class", "release-marker")
+                        .attr("x1", d => xScale(d.date))
+                        .attr("x2", d => xScale(d.date))
+                        .attr("y1", 0)
+                        .attr("y2", boundedHeight)
+                        .attr("stroke", config.releaseMarkerColor || NYT_PALETTE.highlightOrange)
+                        .attr("stroke-width", 1.5)
+                        .attr("stroke-dasharray", "4,2")
+                        .on("mouseover", function(event, d) {
+                            showTooltip(event, `${d3.timeFormat("%Y")(d.date)}: ${d.eventName}`);
+                        })
+                        .on("mousemove", moveTooltip)
+                        .on("mouseout", hideTooltip);
+                }
 
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(isSubPlot ? svg.node().ownerSVGElement : svg.node(), margin, config.aspectRatio || 0.6, isSubPlot ? config : null);
-            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-             if (!data || data.length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for scatter plot.");
-                return;
-            }
-
-            const xAccessor = d => d[config.xCol];
-            const yAccessor = d => d[config.yCol];
-
-            const xScale = d3.scaleLinear()
-                .domain(d3.extent(data, xAccessor)).nice()
-                .range([0, boundedWidth]);
-
-            const yScale = d3.scaleLinear()
-                .domain(d3.extent(data, yAccessor)).nice()
-                .range([boundedHeight, 0]);
-
-            g.append("g")
-                .attr("class", "axis x-axis")
-                .attr("transform", `translate(0,${boundedHeight})`)
-                .call(d3.axisBottom(xScale).ticks(5).tickSizeOuter(0).tickFormat(d3.format(",")))
-                .append("text")
-                .attr("x", boundedWidth / 2)
-                .attr("y", margin.bottom - 15)
-                .attr("fill", NYT_PALETTE.charcoal)
-                .style("text-anchor", "middle")
-                .text("Altitude (m)");
-
-            g.append("g")
-                .attr("class", "axis y-axis")
-                .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0))
-                .append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 15)
-                .attr("x", 0 - (boundedHeight / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .style("fill", NYT_PALETTE.charcoal)
-                .text("Sentiment Score");
-
-            g.append("g")
-                .attr("class", "grid")
-                .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
-
-            g.selectAll("circle.scatter-point")
-                .data(data.filter(d => xAccessor(d) != null && yAccessor(d) != null))
-                .join("circle")
-                .attr("class", "scatter-point")
-                .attr("cx", d => xScale(xAccessor(d)))
-                .attr("cy", d => yScale(yAccessor(d)))
-                .attr("r", 3.5)
-                .attr("fill", NYT_PALETTE.accentTeal)
-                .attr("opacity", 0.6)
-                .on("mouseover", function(event, d) {
-                    d3.select(this).attr("r", 5.5).attr("opacity", 1);
-                    showTooltip(event, `Altitude: ${xAccessor(d) ? xAccessor(d).toFixed(0) : 'N/A'}m<br>Sentiment: ${yAccessor(d) ? yAccessor(d).toFixed(2) : 'N/A'}`);
-                })
-                .on("mousemove", moveTooltip)
-                .on("mouseout", function(event, d) {
-                    d3.select(this).attr("r", 3.5).attr("opacity", 0.6);
-                    hideTooltip();
-                });
-
-            if (config.showLoess && typeof d3.regressionLowess === 'function') {
-                const validDataForLoess = data.filter(d => xAccessor(d) != null && yAccessor(d) != null);
-                if (validDataForLoess.length > 1) {
-                    const lowess = d3.regressionLowess()
-                        .x(xAccessor)
-                        .y(yAccessor)
-                        .bandwidth(config.loessBandwidth || 0.35);
-
-                    const lineGenerator = d3.line()
-                        .x(d => xScale(d[0]))
-                        .y(d => yScale(d[1]))
-                        .curve(d3.curveBasis);
-
-                    const lowessData = lowess(validDataForLoess);
-
-                    if (lowessData && lowessData.length > 0) {
-                        g.append("path")
-                            .datum(lowessData)
-                            .attr("fill", "none")
-                            .attr("stroke", NYT_PALETTE.highlightOrange)
-                            .attr("stroke-width", 2)
-                            .attr("d", lineGenerator);
-                    }
+                if(!isSubPlot) { // Only add title if it's not a subplot
+                    svg.append("text")
+                        .attr("x", (margin.left + boundedWidth / 2))
+                        .attr("y", margin.top / 2)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title || "Chart Title");
                 }
             }
 
-            if (!isSubPlot) {
-                svg.append("text")
-                    .attr("x", (margin.left + boundedWidth / 2))
-                    .attr("y", margin.top / 2)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "16px")
-                    .style("font-family", "var(--font-heading)")
-                    .text(config.title || "Chart Title");
-            }
-        }
+            function renderPieChart(svgSelectorOrElement, data, config) {
+                const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+                const isSubPlot = svg.node().tagName === 'g';
+                if (!isSubPlot) svg.selectAll("*").remove();
+                else svg.selectAll("*").remove();
 
-        function renderBoxPlot(svgSelectorOrElement, data, config) {
-            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
-            const isSubPlot = svg.node().tagName === 'g';
-            if (!isSubPlot) svg.selectAll("*").remove();
-            else svg.selectAll("*").remove();
+                const margin = config.margin || chartSettings.margin;
+                let svgForDims = isSubPlot ? d3.select(svg.node().ownerSVGElement) : svg;
+                if (config.svgWidth && config.svgHeight && isSubPlot) {} else { svgForDims = svg; }
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svgForDims.node(), margin, config.aspectRatio || 0.8, isSubPlot ? config : null);
 
-            const margin = config.margin || chartSettings.margin;
-            let svgForDims = isSubPlot ? d3.select(svg.node().ownerSVGElement) : svg;
-             if (config.svgWidth && config.svgHeight && isSubPlot) { }
-             else { svgForDims = svg; }
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svgForDims.node(), margin, config.aspectRatio || 0.6, isSubPlot ? config : null);
-
-            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-            if (isSubPlot) g.selectAll("*").remove();
-
-            if (!data || Object.keys(data).length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for box plot.");
-                return;
-            }
-
-            const categories = Object.keys(data);
-            const allValues = [];
-            categories.forEach(cat => {
-                if (data[cat]) {
-                    allValues.push(data[cat].min, data[cat].q1, data[cat].median, data[cat].q3, data[cat].max);
+                const radius = Math.min(boundedWidth, boundedHeight) / 2 * 0.8;
+                const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${svgWidth / 2},${svgHeight / 2 - (config.chi2Annotation ? 10 : 0)})`);
+                 if (isSubPlot) { // If it's a group, we need to center it within its own bounds
+                    g.attr("transform", `translate(${boundedWidth / 2},${boundedHeight / 2  - (config.chi2Annotation ? 10 : 0)})`);
                 }
-            });
 
-            const xScale = d3.scaleBand()
-                .domain(categories)
-                .range([0, boundedWidth])
-                .padding(0.4);
+                if (!data || data.length === 0) {
+                     g.append("text").attr("text-anchor", "middle").attr("dy", "0.35em").text("No data for chart.");
+                    return;
+                }
 
-            const yMinDomain = Math.max(1, d3.min(allValues.filter(v => v!=null && v > 0)) || 1);
-            const yMaxDomain = d3.max(allValues.filter(v => v!=null)) || 10;
+                const color = d3.scaleOrdinal(config.colors || [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray])
+                                .domain(data.map(d => d.name));
 
-            const yScale = d3.scaleLog()
-                .domain([yMinDomain, yMaxDomain])
-                .nice()
-                .range([boundedHeight, 0]);
+                const pie = d3.pie().value(d => d.value).sort(null);
+                const arcGenerator = d3.arc().innerRadius(config.isDonut ? radius * (config.donutRadiusRatio || 0.6) : 0).outerRadius(radius);
 
-            g.append("g")
-                .attr("class", "axis x-axis")
-                .attr("transform", `translate(0,${boundedHeight})`)
-                .call(d3.axisBottom(xScale).tickSizeOuter(0))
-                .selectAll("text")
-                .style("text-anchor", "end")
-                .attr("dx", "-.8em")
-                .attr("dy", ".15em")
-                .attr("transform", "rotate(-45)");
+                const arcs = g.selectAll(".arc")
+                    .data(pie(data))
+                    .enter().append("g")
+                    .attr("class", "arc");
 
-            g.append("g")
-                .attr("class", "axis y-axis")
-                .call(d3.axisLeft(yScale).ticks(5, d => {
-                        if (d === 0) return "0";
-                        const logVal = Math.log10(d);
-                        if (logVal === Math.floor(logVal) || d === yMinDomain || d === yMaxDomain ) return d3.format("~s")(d);
-                        return "";
+                arcs.append("path")
+                    .attr("d", arcGenerator)
+                    .attr("fill", d => color(d.data.name))
+                    .attr("stroke", NYT_PALETTE.softBackdrop)
+                    .style("stroke-width", "2px")
+                    .on("mouseover", function(event, d) {
+                        d3.select(this).transition().duration(50).attr("opacity", 0.8);
+                        const percent = (d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1);
+                        showTooltip(event, `${d.data.name}: ${d.data.value} (${percent}%)`);
                     })
-                    .tickSizeOuter(0));
+                    .on("mousemove", moveTooltip)
+                    .on("mouseout", function(event, d) {
+                        d3.select(this).transition().duration(50).attr("opacity", 1);
+                        hideTooltip();
+                    });
 
-            g.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 15)
-                .attr("x", 0 - (boundedHeight / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("fill", NYT_PALETTE.midGray)
-                .text(config.yLabel || "Reporting Delay (days, log scale)");
+                const legendGroupYOffset = isSubPlot ? boundedHeight - margin.bottom + 10 : svgHeight / 2 + radius + 20;
+                const legendGroupXOffset = isSubPlot ? boundedWidth / 2 : svgWidth / 2;
 
-            const boxWidth = xScale.bandwidth();
+                const legendGroup = (isSubPlot ? g : svg).append("g") // Append to g if subplot, else svg
+                    .attr("class", "legend-group")
+                    .attr("transform", `translate(${isSubPlot ? 0 : legendGroupXOffset}, ${legendGroupYOffset})`);
 
-            categories.forEach(cat => {
-                const stats = data[cat];
-                if (!stats || stats.count === 0) return;
 
-                const xCenter = xScale(cat) + boxWidth / 2;
+                const legend = legendGroup.selectAll(".legend-item")
+                    .data(pie(data))
+                    .enter().append("g")
+                    .attr("class", "legend-item")
+                    .attr("transform", (d, i, nodes) => {
+                        const itemWidth = 100;
+                        const itemsPerRow = Math.max(1, Math.floor(boundedWidth / itemWidth));
+                        const col = i % itemsPerRow;
+                        const row = Math.floor(i / itemsPerRow);
+                        const xOffset = col * itemWidth - (itemsPerRow -1) * itemWidth / 2;
+                        const yOffset = row * 20;
+                        return `translate(${xOffset}, ${yOffset})`;
+                    });
 
-                const logSafeMin = Math.max(1, stats.min);
-                const logSafeQ1 = Math.max(1, stats.q1);
-                const logSafeMedian = Math.max(1, stats.median);
-                const logSafeQ3 = Math.max(1, stats.q3);
-                const logSafeMax = Math.max(1, stats.max);
+                legend.append("rect")
+                    .attr("x", isSubPlot ? -legendGroup.node().getBBox().width / 2 : -radius * 0.8)
+                    .attr("y", 0)
+                    .attr("width", 12)
+                    .attr("height", 12)
+                    .style("fill", d => color(d.data.name));
 
-                g.append("line")
-                    .attr("x1", xCenter)
-                    .attr("x2", xCenter)
-                    .attr("y1", yScale(logSafeMin))
-                    .attr("y2", yScale(logSafeMax))
-                    .attr("stroke", NYT_PALETTE.charcoal);
+                legend.append("text")
+                    .attr("x", (isSubPlot ? -legendGroup.node().getBBox().width / 2 : -radius * 0.8) + 18)
+                    .attr("y", 9)
+                    .attr("dy", "0.1em")
+                    .style("text-anchor", "start")
+                    .style("font-size", "11px")
+                    .text(d => `${d.data.name} (${(d.data.value / d3.sum(data, item => item.value) * 100).toFixed(1)}%)`);
 
-                g.append("rect")
-                    .attr("x", xScale(cat))
-                    .attr("y", yScale(logSafeQ3))
-                    .attr("height", Math.max(0, yScale(logSafeQ1) - yScale(logSafeQ3)))
-                    .attr("width", boxWidth)
-                    .attr("stroke", NYT_PALETTE.charcoal)
-                    .attr("fill", NYT_PALETTE.accentTeal)
-                    .attr("opacity", 0.8)
-                     .on("mouseover", function(event) {
-                        showTooltip(event, `${cat}:<br>Min: ${stats.min.toFixed(0)}<br>Q1: ${stats.q1.toFixed(0)}<br>Med: ${stats.median.toFixed(0)}<br>Q3: ${stats.q3.toFixed(0)}<br>Max: ${stats.max.toFixed(0)}<br>N: ${stats.count}`);
+                if (config.chi2Annotation) {
+                     svg.append("text")
+                        .attr("x", svgWidth / 2)
+                        .attr("y", svgHeight - 5)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "10px")
+                        .style("fill", NYT_PALETTE.midGray)
+                        .text(config.chi2Annotation);
+                }
+                if(!isSubPlot){
+                    svg.append("text")
+                        .attr("x", (svgWidth / 2))
+                        .attr("y", margin.top / 1.5)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title || "Chart Title");
+                }
+            }
+
+            function renderStackedBarChart(svgSelectorOrElement, data, config) {
+                const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+                const isSubPlot = svg.node().tagName === 'g';
+                if (!isSubPlot) svg.selectAll("*").remove();
+                else svg.selectAll("*").remove();
+
+                const margin = config.margin || chartSettings.margin;
+                let svgForDimsNode = isSubPlot ? svg.node().ownerSVGElement : svg.node();
+                 // If config provides explicit dimensions (for subplots), use them for bounded calculations
+                let useBoundedWidth = config.svgWidth ? config.svgWidth - margin.left - margin.right : null;
+                let useBoundedHeight = config.svgHeight ? config.svgHeight - margin.top - margin.bottom : null;
+
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(
+                    svgForDimsNode, margin, config.aspectRatio || 0.6,
+                    isSubPlot ? {width: config.svgWidth, height: config.svgHeight} : null
+                );
+
+                const finalBoundedWidth = useBoundedWidth || boundedWidth;
+                const finalBoundedHeight = useBoundedHeight || boundedHeight;
+
+                const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                if (isSubPlot && svg.node().tagName === 'g') { /* Already transformed if it's a group */ }
+                else if (!isSubPlot) { g.attr("transform", `translate(${margin.left},${margin.top})`); }
+
+
+                if (!data || data.length === 0 || (Array.isArray(data) && data.every(d => Object.keys(d).length <=1 )) ) {
+                    g.append("text").attr("x", finalBoundedWidth / 2).attr("y", finalBoundedHeight / 2).attr("text-anchor", "middle").text("No data for stacked bar chart.");
+                    return;
+                }
+
+                const categories = data.map(d => d[config.xDomainKey || 'category']);
+                const stackKeys = config.keys || Object.keys(data[0]).filter(k => k !== (config.xDomainKey || 'category'));
+
+                const stack = d3.stack().keys(stackKeys);
+                const series = stack(data);
+
+                const xScale = d3.scaleBand()
+                    .domain(categories)
+                    .range([0, finalBoundedWidth])
+                    .padding(0.25);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(series, d => d3.max(d, s => s[1])) || 1])
+                    .nice()
+                    .range([finalBoundedHeight, 0]);
+
+                const color = d3.scaleOrdinal(config.colors || d3.schemeTableau10)
+                    .domain(stackKeys);
+
+                g.append("g")
+                    .attr("class", "axis x-axis")
+                    .attr("transform", `translate(0,${finalBoundedHeight})`)
+                    .call(d3.axisBottom(xScale).tickSizeOuter(0));
+
+                g.append("g")
+                    .attr("class", "axis y-axis")
+                    .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
+
+                g.append("g")
+                    .attr("class", "grid")
+                    .call(d3.axisLeft(yScale).ticks(5).tickSize(-finalBoundedWidth).tickFormat(""));
+
+                const groups = g.selectAll(".bargroup")
+                    .data(series)
+                    .enter().append("g")
+                    .attr("class", "bargroup")
+                    .attr("fill", d => color(d.key));
+
+                groups.selectAll("rect")
+                    .data(d => d)
+                    .enter().append("rect")
+                    .attr("x", d => xScale(d.data[config.xDomainKey || 'category']))
+                    .attr("y", d => yScale(d[1]))
+                    .attr("height", d => Math.max(0, yScale(d[0]) - yScale(d[1])))
+                    .attr("width", xScale.bandwidth())
+                    .on("mouseover", function(event, d_bar) {
+                        const seriesData = d3.select(this.parentNode).datum();
+                        const categoryValue = d_bar.data[config.xDomainKey || 'category'];
+                        const barValue = d_bar.data[seriesData.key];
+                        showTooltip(event, `${seriesData.key} (${categoryValue}): ${barValue}`);
                     })
                     .on("mousemove", moveTooltip)
                     .on("mouseout", hideTooltip);
 
-                g.append("line")
-                    .attr("x1", xScale(cat))
-                    .attr("x2", xScale(cat) + boxWidth)
-                    .attr("y1", yScale(logSafeMedian))
-                    .attr("y2", yScale(logSafeMedian))
-                    .attr("stroke", NYT_PALETTE.softBackdrop)
-                    .attr("stroke-width", 2);
+                if (!isSubPlot) {
+                    const legend = svg.selectAll(".legend")
+                        .data(stackKeys)
+                        .enter().append("g")
+                        .attr("class", "legend")
+                        .attr("transform", (d, i) => `translate(${boundedWidth + margin.left + 15},${margin.top + i * 20})`);
 
-                g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMin)).attr("y2", yScale(logSafeMin)).attr("stroke", NYT_PALETTE.charcoal);
-                g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMax)).attr("y2", yScale(logSafeMax)).attr("stroke", NYT_PALETTE.charcoal);
-            });
+                    legend.append("rect")
+                        .attr("x", 0)
+                        .attr("width", 12)
+                        .attr("height", 12)
+                        .style("fill", color);
 
-            if (!isSubPlot) {
-                svg.append("text")
-                    .attr("x", (margin.left + boundedWidth / 2))
-                    .attr("y", margin.top / 2)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "16px")
-                    .style("font-family", "var(--font-heading)")
-                    .text(config.title || "Chart Title");
-            }
-        }
+                    legend.append("text")
+                        .attr("x", 18)
+                        .attr("y", 9)
+                        .attr("dy", ".35em")
+                        .style("text-anchor", "start")
+                        .style("font-size","11px")
+                        .text(d => d);
 
-        function renderViolinPlot(svgSelectorOrElement, data, config) {
-            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
-            const isSubPlot = svg.node().tagName === 'g';
-            if (!isSubPlot) svg.selectAll("*").remove();
-            else svg.selectAll("*").remove();
-
-            const margin = config.margin || {top: 10, right: 10, bottom: 30, left: 40}; // Smaller default for subplots
-            let chartSpecificWidth = config.svgWidth || svg.node().parentNode.getBoundingClientRect().width;
-            let chartSpecificHeight = config.svgHeight || chartSpecificWidth * (config.aspectRatio || 0.8);
-
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(
-                isSubPlot ? svg.node().ownerSVGElement : svg.node(),
-                margin,
-                config.aspectRatio || (chartSpecificHeight/chartSpecificWidth),
-                isSubPlot ? {width: chartSpecificWidth, height: chartSpecificHeight} : null
-            );
-
-            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-            if (isSubPlot) g.selectAll("*").remove();
-
-
-            if (!data || !data.values || data.values.length < 2) { // Need at least 2 points for KDE
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("Not enough data.");
-                return;
+                    svg.append("text")
+                        .attr("x", (margin.left + boundedWidth / 2))
+                        .attr("y", margin.top / 2)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title || "Chart Title");
+                } else {
+                     g.append("text")
+                        .attr("x", finalBoundedWidth / 2)
+                        .attr("y", -margin.top / 2 + 10) // Adjust for subplot title
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "12px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title);
+                }
             }
 
-            const values = data.values.sort(d3.ascending);
+            function renderForceNetwork(svgSelector, data, config) {
+                const svg = d3.select(svgSelector);
+                svg.selectAll("*").remove();
+                const margin = config.margin || chartSettings.margin;
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.7);
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-            const yScale = d3.scaleLinear()
-                .domain(d3.extent(values)).nice() // Use actual extent for y-axis
-                .range([boundedHeight, 0]);
+                if (!data || data.length === 0) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for force network.");
+                    return;
+                }
 
-            const yAxisGroup = g.append("g").attr("class", "axis y-axis");
-            if (config.yAxisLabel || !isSubPlot) { // Show Y axis only if label provided or it's not a subplot assuming shared axis
-                 yAxisGroup.call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
-                 if(config.yAxisLabel) {
-                    g.append("text")
-                        .attr("transform", "rotate(-90)")
-                        .attr("y", 0 - margin.left + 15)
-                        .attr("x", 0 - (boundedHeight / 2))
-                        .attr("dy", "1em").style("text-anchor", "middle")
-                        .style("font-size", "10px").style("fill", NYT_PALETTE.midGray)
-                        .text(config.yAxisLabel);
-                 }
-            }
-
-
-            const histogram = d3.histogram()
-                .domain(yScale.domain())
-                .thresholds(yScale.ticks(config.kdeBins || 15))
-                .value(d => d);
-
-            const bins = histogram(values);
-
-            let maxNum = 0;
-            for ( let i = 0; i<bins.length; i++ ) {
-                if (bins[i].length > maxNum) { maxNum = bins[i].length; }
-            }
-            if (maxNum === 0) maxNum = 1; // Avoid division by zero if all bins are empty (should not happen with data check)
-
-            const xNum = d3.scaleLinear()
-                .range([0, boundedWidth / 2])
-                .domain([-maxNum, maxNum]);
-
-            const area = d3.area()
-                .x0(d => xNum(-d.length))
-                .x1(d => xNum(d.length))
-                .y(d => yScale(d.x0 + (d.x1-d.x0)/2 ))
-                .curve(d3.curveCatmullRom);
-
-            g.append("path")
-                .datum(bins)
-                .attr("fill", config.color || NYT_PALETTE.accentTeal)
-                .attr("stroke", NYT_PALETTE.charcoal)
-                .attr("stroke-width", 1)
-                .attr("opacity", 0.7)
-                .attr("d", area);
-
-            const quartiles = [
-                d3.quantile(values, 0.25),
-                d3.quantile(values, 0.50),
-                d3.quantile(values, 0.75)
-            ];
-
-            g.selectAll(".quartile-line")
-                .data(quartiles.filter(q => q !== undefined)) // Filter out undefined quartiles (e.g. if too few data points)
-                .enter()
-                .append("line")
-                .attr("class", "quartile-line")
-                .attr("x1", xNum(-maxNum * 0.15))
-                .attr("x2", xNum(maxNum * 0.15))
-                .attr("y1", d => yScale(d))
-                .attr("y2", d => yScale(d))
-                .attr("stroke", d3.color(config.color || NYT_PALETTE.accentTeal).darker(1.5))
-                .attr("stroke-width", 1.5);
-
-            // X-axis category label below violin
-            g.append("text")
-                .attr("x", boundedWidth / 2 ) // Center of the violin's allocated space
-                .attr("y", boundedHeight + 25) // Below violin
-                .attr("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("font-family", "var(--font-body)")
-                .text(data.category || "");
-        }
-
-        function renderHeatmap(svgSelector, data, config) {
-            console.log(`Rendering Heatmap for ${svgSelector}`);
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.7);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-             if (!data || Object.keys(data).length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for heatmap.");
-                return;
-            }
-
-            const seasons = config.yDomain || Object.keys(data);
-            const weatherTerms = config.xDomain || [...new Set(Object.values(data).flatMap(Object.keys))].sort();
-
-            const flatData = [];
-            seasons.forEach(season => {
-                weatherTerms.forEach(term => {
-                    flatData.push({
-                        season: season,
-                        term: term,
-                        count: (data[season] && data[season][term]) ? +data[season][term] : 0
-                    });
+                const nodesMap = new Map();
+                data.forEach(link => {
+                    if (!nodesMap.has(link.source)) nodesMap.set(link.source, {id: link.source, name: link.source, type: 'environment', degree: 0});
+                    if (!nodesMap.has(link.target)) nodesMap.set(link.target, {id: link.target, name: link.target, type: 'verb', degree: 0});
+                    nodesMap.get(link.source).degree += (link.value || 1);
+                    nodesMap.get(link.target).degree += (link.value || 1);
                 });
-            });
+                const nodes = Array.from(nodesMap.values());
+                const links = data.map(d => ({...d}));
 
-            const xScale = d3.scaleBand()
-                .domain(weatherTerms)
-                .range([0, boundedWidth])
-                .padding(0.05);
+                const simulation = d3.forceSimulation(nodes)
+                    .force("link", d3.forceLink(links).id(d => d.id).strength(d => 0.01 + (d.value || 1) / 50).distance(d => 100 - (d.value || 1)))
+                    .force("charge", d3.forceManyBody().strength(-100 - nodes.length * 2))
+                    .force("center", d3.forceCenter(boundedWidth / 2, boundedHeight / 2))
+                    .force("x", d3.forceX(boundedWidth / 2).strength(0.03))
+                    .force("y", d3.forceY(boundedHeight / 2).strength(0.03));
 
-            const yScale = d3.scaleBand()
-                .domain(seasons)
-                .range([0, boundedHeight])
-                .padding(0.05);
+                const maxDegree = Math.max(1, d3.max(nodes, d => d.degree));
+                const nodeRadiusScale = d3.scaleSqrt().domain([1, maxDegree]).range([3, 12]);
 
-            const maxCount = d3.max(flatData, d => d.count) || 1;
-            const colorScale = d3.scaleSequential(d3.interpolateBlues)
-                .domain([0, maxCount]);
+                const link = g.append("g")
+                    .attr("stroke", NYT_PALETTE.hairline)
+                    .attr("stroke-opacity", 0.4)
+                    .selectAll("line")
+                    .data(links)
+                    .join("line")
+                    .attr("stroke-width", d => Math.max(0.5, Math.sqrt(d.value || 1)/2));
 
-            g.append("g")
-                .attr("class", "axis x-axis")
-                .attr("transform", `translate(0,${boundedHeight})`)
-                .call(d3.axisBottom(xScale).tickSizeOuter(0))
-                .selectAll("text")
-                .style("text-anchor", "end")
-                .attr("dx", "-.8em")
-                .attr("dy", ".15em")
-                .attr("transform", "rotate(-45)");
-
-            g.append("g")
-                .attr("class", "axis y-axis")
-                .call(d3.axisLeft(yScale).tickSizeOuter(0));
-
-            g.selectAll(".heatmap-cell")
-                .data(flatData)
-                .join("rect")
-                .attr("class", "heatmap-cell")
-                .attr("x", d => xScale(d.term))
-                .attr("y", d => yScale(d.season))
-                .attr("width", xScale.bandwidth())
-                .attr("height", yScale.bandwidth())
-                .attr("fill", d => d.count > 0 ? colorScale(d.count) : "#fff") // White for zero count
-                .attr("stroke", NYT_PALETTE.hairline)
-                .attr("stroke-width", 0.5)
-                .on("mouseover", function(event, d) {
-                    d3.select(this).attr("stroke", NYT_PALETTE.charcoal).attr("stroke-width", 1.5);
-                    showTooltip(event, `${d.season} - ${d.term}<br>Count: ${d.count}`);
-                })
-                .on("mousemove", moveTooltip)
-                .on("mouseout", function(event, d) {
-                    d3.select(this).attr("stroke", NYT_PALETTE.hairline).attr("stroke-width", 0.5);
-                    hideTooltip();
-                });
-
-            svg.append("text")
-                .attr("x", (svgWidth / 2))
-                .attr("y", margin.top / 2)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
-        }
-
-        async function renderChoroplethMap(svgSelector, geoDataUrl, valueData, config) {
-            console.log(`Rendering ChoroplethMap for ${svgSelector}`);
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
-            const margin = config.margin || {top:10, right:10, bottom:10, left:10};
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, 0.6);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-            if (!valueData || valueData.length === 0) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No sighting data for map.");
-                return;
-            }
-
-            try {
-                const us = await d3.json(geoDataUrl);
-                const counties = topojson.feature(us, us.objects.counties);
-                const states = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
-
-                const dataMap = new Map();
-                valueData.forEach(d => {
-                    if (d.pop_2020 > 0) {
-                        d.rate = (d.sightings / d.pop_2020) * 100000;
-                    } else {
-                        d.rate = 0;
-                    }
-                    dataMap.set(d.county_fips, d);
-                });
-
-                const rates = Array.from(dataMap.values()).map(d => d.rate).filter(r => r !== undefined && r > 0);
-                const colorScale = d3.scaleQuantize()
-                    .domain([0, d3.quantile(rates, 0.95) || 10]) // Cap at 95th percentile
-                    .range(d3.schemeBlues[7]); // Use 7 shades of blue
-
-                const projection = d3.geoAlbersUsa().fitSize([boundedWidth, boundedHeight], counties);
-                const pathGenerator = d3.geoPath().projection(projection);
-
-                g.selectAll(".county")
-                    .data(counties.features)
-                    .join("path")
-                    .attr("class", "county")
-                    .attr("d", pathGenerator)
-                    .attr("fill", d => {
-                        const countyData = dataMap.get(d.id);
-                        return countyData && countyData.rate > 0 ? colorScale(countyData.rate) : "#eee"; // Light gray for no/zero data
-                    })
-                    .attr("stroke", "#fff")
-                    .attr("stroke-width", 0.5)
-                    .on("mouseover", function(event, d_map) {
-                        d3.select(this).attr("stroke", NYT_PALETTE.charcoal).attr("stroke-width", 1);
-                        const countyData = dataMap.get(d_map.id);
-                        let tooltipHtml = `County FIPS: ${d_map.id}`; // Basic info
-                        if (d_map.properties && d_map.properties.name) tooltipHtml = `${d_map.properties.name} County`;
-
-                        if (countyData) {
-                            tooltipHtml = `${countyData.name || (d_map.properties && d_map.properties.name) || 'N/A County'}<br>Rate: ${countyData.rate ? countyData.rate.toFixed(2) : 'N/A'} per 100k<br>Sightings: ${countyData.sightings}<br>Pop 2020: ${d3.format(",")(countyData.pop_2020)}`;
-                        } else {
-                            tooltipHtml += "<br>No sighting data";
-                        }
-                        showTooltip(event, tooltipHtml);
+                const node = g.append("g")
+                    .selectAll("circle")
+                    .data(nodes)
+                    .join("circle")
+                    .attr("r", d => nodeRadiusScale(d.degree) || 3)
+                    .attr("fill", d => d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange)
+                    .attr("stroke", d => d3.color(d.type === 'environment' ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange).darker(0.5))
+                    .attr("stroke-width", 1)
+                    .call(drag(simulation))
+                     .on("mouseover", function(event, d) {
+                        d3.select(this).attr("stroke-width", 2.5);
+                        showTooltip(event, `${d.type === 'environment' ? 'Env' : 'Verb'}: ${d.name}<br>Connections: ${d.degree}`);
                     })
                     .on("mousemove", moveTooltip)
-                    .on("mouseout", function(event, d_map) {
-                        d3.select(this).attr("stroke", "#fff").attr("stroke-width", 0.5);
+                    .on("mouseout", function(event,d){
+                        d3.select(this).attr("stroke-width", 1.5);
                         hideTooltip();
                     });
 
-                g.append("path")
-                    .datum(states)
-                    .attr("fill", "none")
-                    .attr("stroke", NYT_PALETTE.midGray)
-                    .attr("stroke-linejoin", "round")
-                    .attr("d", pathGenerator);
+                const labels = g.append("g")
+                    .selectAll("text")
+                    .data(nodes)
+                    .join("text")
+                    .attr("dx", d => (nodeRadiusScale(d.degree) || 3) + 4)
+                    .attr("dy", "0.35em")
+                    .style("font-size", "9px")
+                    .style("fill", NYT_PALETTE.midGray)
+                    .text(d => d.name);
+
+                simulation.on("tick", () => {
+                    link
+                        .attr("x1", d => d.source.x)
+                        .attr("y1", d => d.source.y)
+                        .attr("x2", d => d.target.x)
+                        .attr("y2", d => d.target.y);
+                    node
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y);
+                    labels
+                        .attr("x", d => d.x)
+                        .attr("y", d => d.y);
+                });
+
+                function drag(simulation) {
+                    function dragstarted(event, d) {
+                        if (!event.active) simulation.alphaTarget(0.3).restart();
+                        d.fx = d.x;
+                        d.fy = d.y;
+                    }
+                    function dragged(event, d) {
+                        d.fx = event.x;
+                        d.fy = event.y;
+                    }
+                    function dragended(event, d) {
+                        if (!event.active) simulation.alphaTarget(0);
+                        d.fx = null;
+                        d.fy = null;
+                    }
+                    return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+                }
 
                 svg.append("text")
                     .attr("x", (svgWidth / 2))
@@ -1901,23 +1329,654 @@
                     .attr("text-anchor", "middle")
                     .style("font-size", "16px")
                     .style("font-family", "var(--font-heading)")
-                    .text(config.title || "US County Sightings");
-
-            } catch (error) {
-                console.error("Error rendering choropleth map:", error);
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("Error loading map data.");
+                    .text(config.title || "Chart Title");
             }
-        }
 
-        window.renderFunctions = {
-            renderLineAreaChart, renderPieChart, renderStackedBarChart, renderForceNetwork,
-            renderWordCloud, renderScatterPlot, renderBoxPlot, renderViolinPlot,
-            renderHeatmap, renderChoroplethMap, getChartDimensions
-        };
+            function renderWordCloud(svgSelector, data, config) {
+                console.log(`Rendering WordCloud for ${svgSelector}`);
+                const svg = d3.select(svgSelector);
+                svg.selectAll("*").remove();
+                const margin = config.margin || {top:20, right:10, bottom:20, left:10};
 
-        // --- Start data loading ---
-        loadData();
+                const seasons = ["Spring", "Summer", "Fall", "Winter"];
+                const numCols = 2;
+                const numRows = 2;
 
+                const parentNode = svg.node().parentNode;
+                const containerWidth = parentNode.getBoundingClientRect().width;
+
+                const totalSvgWidth = Math.max(300, containerWidth);
+                const singleCloudAspectRatio = 0.8;
+                const horizontalPadding = 20;
+                const verticalPadding = 40;
+
+                const singleCloudWidth = (totalSvgWidth - margin.left - margin.right - (numCols - 1) * horizontalPadding) / numCols;
+                const singleCloudHeight = singleCloudWidth * singleCloudAspectRatio;
+                const totalSvgHeight = (singleCloudHeight * numRows) + (margin.top + margin.bottom) + (numRows - 1) * verticalPadding;
+
+                svg.attr("width", totalSvgWidth).attr("height", totalSvgHeight);
+
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                if (!data || Object.keys(data).length === 0 || !Object.values(data).some(seasonWords => seasonWords && Object.keys(seasonWords).length > 0) ) {
+                     g.append("text")
+                        .attr("x", (totalSvgWidth - margin.left - margin.right) / 2)
+                        .attr("y", (totalSvgHeight - margin.top - margin.bottom) / 2)
+                        .attr("text-anchor", "middle")
+                        .text("No data for word clouds.");
+                    return;
+                }
+
+                if (typeof d3.layout === "undefined" || typeof d3.layout.cloud === "undefined") {
+                    g.append("text").attr("x", 10).attr("y", 40).text("d3.layout.cloud not found!").style("fill", "red");
+                    console.error('d3.layout.cloud is not available. Check CDN and D3 version compatibility.');
+                    return;
+                }
+
+                const colorScale = d3.scaleOrdinal([NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, "#7aa25c", "#6a7985"]);
+
+
+                seasons.forEach((season, i) => {
+                    const words = data[season] ? Object.entries(data[season]).map(([text, size]) => ({text, size: +size})) : [];
+
+                    const colIndex = i % numCols;
+                    const rowIndex = Math.floor(i / numCols);
+
+                    const cloudX = colIndex * (singleCloudWidth + horizontalPadding);
+                    const cloudY = rowIndex * (singleCloudHeight + verticalPadding);
+
+                    const cloudGroup = g.append("g")
+                        .attr("transform", `translate(${cloudX},${cloudY})`);
+
+                    cloudGroup.append("text")
+                        .attr("x", singleCloudWidth / 2)
+                        .attr("y", -5)
+                        .attr("text-anchor", "middle")
+                        .style("font-family", "var(--font-heading)")
+                        .style("font-size", "14px")
+                        .style("fill", NYT_PALETTE.charcoal)
+                        .text(season);
+
+                    if (words.length === 0) {
+                        cloudGroup.append("text")
+                            .attr("x", singleCloudWidth/2)
+                            .attr("y", singleCloudHeight/2)
+                            .attr("text-anchor", "middle")
+                            .style("font-size", "10px")
+                            .text("No words");
+                        return;
+                    }
+
+                    const maxFreq = d3.max(words, d => d.size) || 1;
+                    const fontSizeScale = d3.scaleSqrt().domain([d3.min(words, d => d.size) || 1, maxFreq]).range([10, Math.min(40, singleCloudHeight/4)]);
+
+                    d3.layout.cloud().size([singleCloudWidth, singleCloudHeight])
+                        .words(words.map(d => ({text: d.text, size: fontSizeScale(d.size), originalSize: d.size })))
+                        .padding(3)
+                        .rotate(() => Math.random() > 0.7 ? 0 : (~~(Math.random() * 2) * 90))
+                        .font("var(--font-body)")
+                        .fontSize(d => d.size)
+                        .on("end", (drawnWords) => {
+                            cloudGroup.append("g")
+                                .attr("transform", `translate(${singleCloudWidth / 2},${singleCloudHeight / 2 + 10})`)
+                                .selectAll("text")
+                                .data(drawnWords)
+                                .enter().append("text")
+                                .style("font-size", d => `${d.size}px`)
+                                .style("font-family", "var(--font-body)")
+                                .style("fill", colorScale(season))
+                                .attr("text-anchor", "middle")
+                                .attr("transform", d => `translate(${[d.x, d.y]})rotate(${d.rotate})`)
+                                .text(d => d.text)
+                                .on("mouseover", function(event, d_word) {
+                                    showTooltip(event, `${d_word.text}: ${d_word.originalSize}`);
+                                })
+                                .on("mousemove", moveTooltip)
+                                .on("mouseout", hideTooltip);
+                        })
+                        .start();
+                });
+            }
+
+            function renderScatterPlot(svgSelectorOrElement, data, config) {
+                const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+                const isSubPlot = svg.node().tagName === 'g';
+                if (!isSubPlot) svg.selectAll("*").remove();
+                else svg.selectAll("*").remove();
+
+
+                const margin = config.margin || chartSettings.margin;
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(isSubPlot ? svg.node().ownerSVGElement : svg.node(), margin, config.aspectRatio || 0.6, isSubPlot ? config : null);
+                const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                if (isSubPlot) g.selectAll("*").remove();
+
+                 if (!data || data.length === 0) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for scatter plot.");
+                    return;
+                }
+
+                const xAccessor = d => d[config.xCol];
+                const yAccessor = d => d[config.yCol];
+
+                const xScale = d3.scaleLinear()
+                    .domain(d3.extent(data, xAccessor)).nice()
+                    .range([0, boundedWidth]);
+
+                const yScale = d3.scaleLinear()
+                    .domain(d3.extent(data, yAccessor)).nice()
+                    .range([boundedHeight, 0]);
+
+                g.append("g")
+                    .attr("class", "axis x-axis")
+                    .attr("transform", `translate(0,${boundedHeight})`)
+                    .call(d3.axisBottom(xScale).ticks(5).tickSizeOuter(0).tickFormat(d3.format(",")))
+                    .append("text")
+                    .attr("x", boundedWidth / 2)
+                    .attr("y", margin.bottom - 15)
+                    .attr("fill", NYT_PALETTE.charcoal)
+                    .style("text-anchor", "middle")
+                    .text("Altitude (m)");
+
+                g.append("g")
+                    .attr("class", "axis y-axis")
+                    .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0))
+                    .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 0 - margin.left + 15)
+                    .attr("x", 0 - (boundedHeight / 2))
+                    .attr("dy", "1em")
+                    .style("text-anchor", "middle")
+                    .style("fill", NYT_PALETTE.charcoal)
+                    .text("Sentiment Score");
+
+                g.append("g")
+                    .attr("class", "grid")
+                    .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
+
+                g.selectAll("circle.scatter-point")
+                    .data(data.filter(d => xAccessor(d) != null && yAccessor(d) != null))
+                    .join("circle")
+                    .attr("class", "scatter-point")
+                    .attr("cx", d => xScale(xAccessor(d)))
+                    .attr("cy", d => yScale(yAccessor(d)))
+                    .attr("r", 3.5)
+                    .attr("fill", NYT_PALETTE.accentTeal)
+                    .attr("opacity", 0.6)
+                    .on("mouseover", function(event, d) {
+                        d3.select(this).attr("r", 5.5).attr("opacity", 1);
+                        showTooltip(event, `Altitude: ${xAccessor(d) ? xAccessor(d).toFixed(0) : 'N/A'}m<br>Sentiment: ${yAccessor(d) ? yAccessor(d).toFixed(2) : 'N/A'}`);
+                    })
+                    .on("mousemove", moveTooltip)
+                    .on("mouseout", function(event, d) {
+                        d3.select(this).attr("r", 3.5).attr("opacity", 0.6);
+                        hideTooltip();
+                    });
+
+                if (config.showLoess && typeof d3.regressionLowess === 'function') {
+                    const validDataForLoess = data.filter(d => xAccessor(d) != null && yAccessor(d) != null);
+                    if (validDataForLoess.length > 1) {
+                        const lowess = d3.regressionLowess()
+                            .x(xAccessor)
+                            .y(yAccessor)
+                            .bandwidth(config.loessBandwidth || 0.35);
+
+                        const lineGenerator = d3.line()
+                            .x(d => xScale(d[0]))
+                            .y(d => yScale(d[1]))
+                            .curve(d3.curveBasis);
+
+                        const lowessData = lowess(validDataForLoess);
+
+                        if (lowessData && lowessData.length > 0) {
+                            g.append("path")
+                                .datum(lowessData)
+                                .attr("fill", "none")
+                                .attr("stroke", NYT_PALETTE.highlightOrange)
+                                .attr("stroke-width", 2)
+                                .attr("d", lineGenerator);
+                        }
+                    }
+                }
+
+                if (!isSubPlot) {
+                    svg.append("text")
+                        .attr("x", (margin.left + boundedWidth / 2))
+                        .attr("y", margin.top / 2)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title || "Chart Title");
+                }
+            }
+
+            function renderBoxPlot(svgSelectorOrElement, data, config) {
+                const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+                const isSubPlot = svg.node().tagName === 'g';
+                if (!isSubPlot) svg.selectAll("*").remove();
+                else svg.selectAll("*").remove();
+
+                const margin = config.margin || chartSettings.margin;
+                let svgForDimsNode = isSubPlot ? svg.node().ownerSVGElement : svg.node();
+                 if (config.svgWidth && config.svgHeight && isSubPlot) { }
+                 else { svgForDimsNode = svg.node(); } // Use the main SVG for dimensioning if not subplot specific
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svgForDimsNode, margin, config.aspectRatio || 0.6, isSubPlot ? config : null);
+
+                const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                if (isSubPlot) g.selectAll("*").remove();
+
+                if (!data || Object.keys(data).length === 0) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for box plot.");
+                    return;
+                }
+
+                const categories = Object.keys(data);
+                const allValues = [];
+                categories.forEach(cat => {
+                    if (data[cat]) {
+                        allValues.push(data[cat].min, data[cat].q1, data[cat].median, data[cat].q3, data[cat].max);
+                    }
+                });
+
+                const xScale = d3.scaleBand()
+                    .domain(categories)
+                    .range([0, boundedWidth])
+                    .padding(0.4);
+
+                const yMinDomain = Math.max(1, d3.min(allValues.filter(v => v!=null && v > 0)) || 1);
+                const yMaxDomain = d3.max(allValues.filter(v => v!=null)) || 10;
+
+                const yScale = d3.scaleLog()
+                    .domain([yMinDomain, yMaxDomain])
+                    .nice()
+                    .range([boundedHeight, 0]);
+
+                g.append("g")
+                    .attr("class", "axis x-axis")
+                    .attr("transform", `translate(0,${boundedHeight})`)
+                    .call(d3.axisBottom(xScale).tickSizeOuter(0))
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-.8em")
+                    .attr("dy", ".15em")
+                    .attr("transform", "rotate(-45)");
+
+                g.append("g")
+                    .attr("class", "axis y-axis")
+                    .call(d3.axisLeft(yScale).ticks(5, d => {
+                            if (d === 0) return "0";
+                            const logVal = Math.log10(d);
+                            if (logVal === Math.floor(logVal) || d === yMinDomain || d === yMaxDomain ) return d3.format("~s")(d);
+                            return "";
+                        })
+                        .tickSizeOuter(0));
+
+                g.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 0 - margin.left + 15)
+                    .attr("x", 0 - (boundedHeight / 2))
+                    .attr("dy", "1em")
+                    .style("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("fill", NYT_PALETTE.midGray)
+                    .text(config.yLabel || "Reporting Delay (days, log scale)");
+
+                const boxWidth = xScale.bandwidth();
+
+                categories.forEach(cat => {
+                    const stats = data[cat];
+                    if (!stats || stats.count === 0) return;
+
+                    const xCenter = xScale(cat) + boxWidth / 2;
+
+                    const logSafeMin = Math.max(1, stats.min);
+                    const logSafeQ1 = Math.max(1, stats.q1);
+                    const logSafeMedian = Math.max(1, stats.median);
+                    const logSafeQ3 = Math.max(1, stats.q3);
+                    const logSafeMax = Math.max(1, stats.max);
+
+                    g.append("line")
+                        .attr("x1", xCenter)
+                        .attr("x2", xCenter)
+                        .attr("y1", yScale(logSafeMin))
+                        .attr("y2", yScale(logSafeMax))
+                        .attr("stroke", NYT_PALETTE.charcoal);
+
+                    g.append("rect")
+                        .attr("x", xScale(cat))
+                        .attr("y", yScale(logSafeQ3))
+                        .attr("height", Math.max(0, yScale(logSafeQ1) - yScale(logSafeQ3)))
+                        .attr("width", boxWidth)
+                        .attr("stroke", NYT_PALETTE.charcoal)
+                        .attr("fill", NYT_PALETTE.accentTeal)
+                        .attr("opacity", 0.8)
+                         .on("mouseover", function(event) {
+                            showTooltip(event, `${cat}:<br>Min: ${stats.min.toFixed(0)}<br>Q1: ${stats.q1.toFixed(0)}<br>Med: ${stats.median.toFixed(0)}<br>Q3: ${stats.q3.toFixed(0)}<br>Max: ${stats.max.toFixed(0)}<br>N: ${stats.count}`);
+                        })
+                        .on("mousemove", moveTooltip)
+                        .on("mouseout", hideTooltip);
+
+                    g.append("line")
+                        .attr("x1", xScale(cat))
+                        .attr("x2", xScale(cat) + boxWidth)
+                        .attr("y1", yScale(logSafeMedian))
+                        .attr("y2", yScale(logSafeMedian))
+                        .attr("stroke", NYT_PALETTE.softBackdrop)
+                        .attr("stroke-width", 2);
+
+                    g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMin)).attr("y2", yScale(logSafeMin)).attr("stroke", NYT_PALETTE.charcoal);
+                    g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMax)).attr("y2", yScale(logSafeMax)).attr("stroke", NYT_PALETTE.charcoal);
+                });
+
+                if (!isSubPlot) {
+                    svg.append("text")
+                        .attr("x", (margin.left + boundedWidth / 2))
+                        .attr("y", margin.top / 2)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title || "Chart Title");
+                }
+            }
+
+            function renderViolinPlot(svgSelectorOrElement, data, config) {
+                const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+                const isSubPlot = svg.node().tagName === 'g';
+                if (!isSubPlot) svg.selectAll("*").remove();
+                else svg.selectAll("*").remove();
+
+                const margin = config.margin || {top: 10, right: 10, bottom: 30, left: 40};
+                let { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(
+                    isSubPlot ? svg.node().ownerSVGElement : svg.node(),
+                    margin,
+                    config.aspectRatio || 0.8, // Violins can be taller
+                    isSubPlot ? config : null // Pass explicit width/height if subplot
+                );
+
+                // If it's a subplot, boundedWidth/Height are relative to the <g> element's allocated space
+                if(isSubPlot) {
+                    boundedWidth = config.svgWidth - margin.left - margin.right;
+                    boundedHeight = config.svgHeight - margin.top - margin.bottom;
+                }
+
+                const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                if (isSubPlot && svg.node().tagName === 'g') { /* Already transformed if it's a group */ }
+                 else if (!isSubPlot) { g.attr("transform", `translate(${margin.left},${margin.top})`); }
+
+
+                if (!data || !data.values || data.values.length < 2) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for violin plot.");
+                    return;
+                }
+
+                const values = data.values.sort(d3.ascending);
+
+                const yScale = d3.scaleLinear()
+                    .domain(d3.extent(values)).nice()
+                    .range([boundedHeight, 0]);
+
+                if (config.showYAxis !== false) { // Show Y axis by default or if specified
+                    const yAxisGroup = g.append("g").attr("class", "axis y-axis");
+                    yAxisGroup.call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
+                    if(config.yAxisLabel) {
+                        yAxisGroup.append("text")
+                            .attr("transform", "rotate(-90)")
+                            .attr("y", 0 - margin.left + 15)
+                            .attr("x", 0 - (boundedHeight / 2))
+                            .attr("dy", "1em").style("text-anchor", "middle")
+                            .style("font-size", "10px").style("fill", NYT_PALETTE.midGray)
+                            .text(config.yAxisLabel);
+                    }
+                }
+
+                const histogram = d3.histogram()
+                    .domain(yScale.domain())
+                    .thresholds(yScale.ticks(config.kdeBins || 20))
+                    .value(d => d);
+
+                const bins = histogram(values);
+
+                let maxNum = 0;
+                for ( let i = 0; i<bins.length; i++ ) {
+                    if (bins[i].length > maxNum) { maxNum = bins[i].length; }
+                }
+                if (maxNum === 0) maxNum = 1;
+
+                const xNum = d3.scaleLinear()
+                    .range([0, boundedWidth / 2])
+                    .domain([0, maxNum]); // Domain from 0 to max density for one side
+
+                const area = d3.area()
+                    .x0(d => -xNum(d.length)) // Draw left half
+                    .x1(d => xNum(d.length))  // Draw right half
+                    .y(d => yScale(d.x0 + (d.x1-d.x0)/2 ))
+                    .curve(d3.curveCatmullRom);
+
+                g.append("path")
+                    .datum(bins)
+                    .attr("transform", `translate(${boundedWidth/2},0)`) // Center the violin
+                    .attr("fill", config.color || NYT_PALETTE.accentTeal)
+                    .attr("stroke", NYT_PALETTE.charcoal)
+                    .attr("stroke-width", 1)
+                    .attr("opacity", 0.7)
+                    .attr("d", area);
+
+                const quartiles = [
+                    d3.quantile(values, 0.25),
+                    d3.quantile(values, 0.50),
+                    d3.quantile(values, 0.75)
+                ];
+
+                g.selectAll(".quartile-line")
+                    .data(quartiles.filter(q => q !== undefined))
+                    .enter()
+                    .append("line")
+                    .attr("class", "quartile-line")
+                    .attr("transform", `translate(${boundedWidth/2},0)`) // Center lines
+                    .attr("x1", -xNum(maxNum * 0.1)) // Short lines, adjust multiplier as needed
+                    .attr("x2", xNum(maxNum * 0.1))
+                    .attr("y1", d => yScale(d))
+                    .attr("y2", d => yScale(d))
+                    .attr("stroke", d3.color(config.color || NYT_PALETTE.accentTeal).darker(1.5))
+                    .attr("stroke-width", 1.5);
+
+                if (!isSubPlot || config.title) { // Show title if main plot or if subplot title is given
+                    const titleText = isSubPlot ? (config.title || data.category || "") : (config.title || "Chart Title");
+                    const titleY = isSubPlot ? (-margin.top / 2 + 10) : (margin.top / 2);
+                    const titleX = isSubPlot ? boundedWidth / 2 : (margin.left + boundedWidth / 2);
+
+                    const titleElement = isSubPlot ? g : svg; // Append title to g if subplot, else to main svg
+                    titleElement.append("text")
+                        .attr("x", titleX)
+                        .attr("y", titleY)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", isSubPlot ? "12px" : "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(titleText);
+                }
+            }
+
+            function renderHeatmap(svgSelector, data, config) {
+                console.log(`Rendering Heatmap for ${svgSelector}`);
+                const svg = d3.select(svgSelector);
+                svg.selectAll("*").remove();
+                const margin = config.margin || chartSettings.margin;
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.7);
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                 if (!data || Object.keys(data).length === 0) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for heatmap.");
+                    return;
+                }
+
+                const seasons = config.yDomain || Object.keys(data);
+                const weatherTerms = config.xDomain || [...new Set(Object.values(data).flatMap(Object.keys))].sort();
+
+                const flatData = [];
+                seasons.forEach(season => {
+                    weatherTerms.forEach(term => {
+                        flatData.push({
+                            season: season,
+                            term: term,
+                            count: (data[season] && data[season][term]) ? +data[season][term] : 0
+                        });
+                    });
+                });
+
+                const xScale = d3.scaleBand()
+                    .domain(weatherTerms)
+                    .range([0, boundedWidth])
+                    .padding(0.05);
+
+                const yScale = d3.scaleBand()
+                    .domain(seasons)
+                    .range([0, boundedHeight])
+                    .padding(0.05);
+
+                const maxCount = d3.max(flatData, d => d.count) || 1;
+                const colorScale = d3.scaleSequential(d3.interpolateBlues)
+                    .domain([0, maxCount]);
+
+                g.append("g")
+                    .attr("class", "axis x-axis")
+                    .attr("transform", `translate(0,${boundedHeight})`)
+                    .call(d3.axisBottom(xScale).tickSizeOuter(0))
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-.8em")
+                    .attr("dy", ".15em")
+                    .attr("transform", "rotate(-45)");
+
+                g.append("g")
+                    .attr("class", "axis y-axis")
+                    .call(d3.axisLeft(yScale).tickSizeOuter(0));
+
+                g.selectAll(".heatmap-cell")
+                    .data(flatData)
+                    .join("rect")
+                    .attr("class", "heatmap-cell")
+                    .attr("x", d => xScale(d.term))
+                    .attr("y", d => yScale(d.season))
+                    .attr("width", xScale.bandwidth())
+                    .attr("height", yScale.bandwidth())
+                    .attr("fill", d => d.count > 0 ? colorScale(d.count) : "#fff")
+                    .attr("stroke", NYT_PALETTE.hairline)
+                    .attr("stroke-width", 0.5)
+                    .on("mouseover", function(event, d) {
+                        d3.select(this).attr("stroke", NYT_PALETTE.charcoal).attr("stroke-width", 1.5);
+                        showTooltip(event, `${d.season} - ${d.term}<br>Count: ${d.count}`);
+                    })
+                    .on("mousemove", moveTooltip)
+                    .on("mouseout", function(event, d) {
+                        d3.select(this).attr("stroke", NYT_PALETTE.hairline).attr("stroke-width", 0.5);
+                        hideTooltip();
+                    });
+
+                svg.append("text")
+                    .attr("x", (svgWidth / 2))
+                    .attr("y", margin.top / 2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .style("font-family", "var(--font-heading)")
+                    .text(config.title || "Chart Title");
+            }
+
+            async function renderChoroplethMap(svgSelector, geoDataUrl, valueData, config) {
+                console.log(`Rendering ChoroplethMap for ${svgSelector}`);
+                const svg = d3.select(svgSelector);
+                svg.selectAll("*").remove();
+                const margin = config.margin || {top:10, right:10, bottom:10, left:10};
+                const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, 0.6);
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                if (!valueData || valueData.length === 0) {
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No sighting data for map.");
+                    return;
+                }
+
+                try {
+                    const us = await d3.json(geoDataUrl);
+                    const counties = topojson.feature(us, us.objects.counties);
+                    const states = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+
+                    const dataMap = new Map();
+                    valueData.forEach(d => {
+                        if (d.pop_2020 > 0) {
+                            d.rate = (d.sightings / d.pop_2020) * 100000;
+                        } else {
+                            d.rate = 0;
+                        }
+                        dataMap.set(d.county_fips, d);
+                    });
+
+                    const rates = Array.from(dataMap.values()).map(d => d.rate).filter(r => r !== undefined && r > 0);
+                    const colorScale = d3.scaleQuantize()
+                        .domain([0, d3.quantile(rates, 0.95) || 10])
+                        .range(d3.schemeBlues[7]);
+
+                    const projection = d3.geoAlbersUsa().fitSize([boundedWidth, boundedHeight], counties);
+                    const pathGenerator = d3.geoPath().projection(projection);
+
+                    g.selectAll(".county")
+                        .data(counties.features)
+                        .join("path")
+                        .attr("class", "county")
+                        .attr("d", pathGenerator)
+                        .attr("fill", d => {
+                            const countyData = dataMap.get(d.id);
+                            return countyData && countyData.rate > 0 ? colorScale(countyData.rate) : "#eee";
+                        })
+                        .attr("stroke", "#fff")
+                        .attr("stroke-width", 0.5)
+                        .on("mouseover", function(event, d_map) {
+                            d3.select(this).attr("stroke", NYT_PALETTE.charcoal).attr("stroke-width", 1);
+                            const countyData = dataMap.get(d_map.id);
+                            let tooltipHtml = `County FIPS: ${d_map.id}`;
+                            if (d_map.properties && d_map.properties.name) tooltipHtml = `${d_map.properties.name} County`;
+
+                            if (countyData) {
+                                tooltipHtml = `${countyData.name || (d_map.properties && d_map.properties.name) || 'N/A County'}<br>Rate: ${countyData.rate ? countyData.rate.toFixed(2) : 'N/A'} per 100k<br>Sightings: ${countyData.sightings}<br>Pop 2020: ${d3.format(",")(countyData.pop_2020)}`;
+                            } else {
+                                tooltipHtml += "<br>No sighting data";
+                            }
+                            showTooltip(event, tooltipHtml);
+                        })
+                        .on("mousemove", moveTooltip)
+                        .on("mouseout", function(event, d_map) {
+                            d3.select(this).attr("stroke", "#fff").attr("stroke-width", 0.5);
+                            hideTooltip();
+                        });
+
+                    g.append("path")
+                        .datum(states)
+                        .attr("fill", "none")
+                        .attr("stroke", NYT_PALETTE.midGray)
+                        .attr("stroke-linejoin", "round")
+                        .attr("d", pathGenerator);
+
+                    svg.append("text")
+                        .attr("x", (svgWidth / 2))
+                        .attr("y", margin.top / 1.5)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "16px")
+                        .style("font-family", "var(--font-heading)")
+                        .text(config.title || "US County Sightings");
+
+                } catch (error) {
+                    console.error("Error rendering choropleth map:", error);
+                    g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("Error loading map data.");
+                }
+            }
+
+            window.renderFunctions = {
+                renderLineAreaChart, renderPieChart, renderStackedBarChart, renderForceNetwork,
+                renderWordCloud, renderScatterPlot, renderBoxPlot, renderViolinPlot,
+                renderHeatmap, renderChoroplethMap, getChartDimensions
+            };
+
+            // --- Start data loading ---
+            loadData();
+
+        }); // End DOMContentLoaded
     </script>
 </body>
 </html>
