@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -102,28 +103,14 @@
                         return [];
                     }
 
-                    // Dynamically import PapaParse
-                    let Papa;
-                    try {
-                        const PapaModule = await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js');
-                        Papa = PapaModule.default || PapaModule; // Try default, then the module itself
-
-                        // If Papa.parse is still not a function, check if it attached to window (common for UMD builds)
-                        if (typeof Papa.parse !== 'function' && window.Papa && typeof window.Papa.parse === 'function') {
-                            console.log('PapaParse not found on module, using window.Papa.');
-                            Papa = window.Papa;
-                        }
-
-                        if (typeof Papa.parse !== 'function') {
-                            throw new Error('Papa.parse function not found after import attempts.');
-                        }
-                        console.log('PapaParse loaded successfully');
-                    } catch (e) {
-                        console.error('Error loading PapaParse:', e);
-                        alert('Error loading CSV parsing library. Please check console.');
+                    // PapaParse is now loaded globally via <script> tag in <head>
+                    // We can access it as window.Papa or directly as Papa.
+                    if (typeof Papa === 'undefined' || typeof Papa.parse !== 'function') {
+                        console.error('PapaParse is not loaded correctly. Please check the <script> tag in <head>.');
+                        alert('CSV parsing library (PapaParse) not loaded. Cannot proceed.');
                         return [];
                     }
-
+                    console.log('PapaParse confirmed loaded globally.');
 
                     console.log('Unzipping CSV data...');
                     const decompressed = fflate.unzipSync(new Uint8Array(zipBuffer));
