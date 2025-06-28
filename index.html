@@ -105,7 +105,18 @@
                     // Dynamically import PapaParse
                     let Papa;
                     try {
-                        Papa = (await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js')).default;
+                        const PapaModule = await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js');
+                        Papa = PapaModule.default || PapaModule; // Try default, then the module itself
+
+                        // If Papa.parse is still not a function, check if it attached to window (common for UMD builds)
+                        if (typeof Papa.parse !== 'function' && window.Papa && typeof window.Papa.parse === 'function') {
+                            console.log('PapaParse not found on module, using window.Papa.');
+                            Papa = window.Papa;
+                        }
+
+                        if (typeof Papa.parse !== 'function') {
+                            throw new Error('Papa.parse function not found after import attempts.');
+                        }
                         console.log('PapaParse loaded successfully');
                     } catch (e) {
                         console.error('Error loading PapaParse:', e);
