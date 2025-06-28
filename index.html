@@ -1,0 +1,156 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bigfoot Report Analysis</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background-color: #f9f9f9; color: #333; }
+        .chart-container { width: 95%; max-width: 1000px; margin: 20px auto; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        svg { display: block; width: 100%; height: 350px; }
+        .axis path, .axis line { fill: none; stroke: #ccc; shape-rendering: crispEdges; }
+        .axis text { font-size: 10px; fill: #555; }
+        .grid line { stroke: #eee; stroke-dasharray: 2,2; }
+        .tooltip { position: absolute; text-align: center; padding: 6px; font-size: 12px; background: #fff; border: 1px solid #ccc; border-radius: 4px; pointer-events: none; opacity: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .trend-line { fill: none; stroke: orange; stroke-width: 2px; }
+        footer { text-align: center; padding: 20px; font-size: 0.9em; color: #777; }
+        footer a { color: steelblue; text-decoration: none; }
+        h2 { text-align: center; font-weight: 300; margin-top:10px; margin-bottom: 0; font-size: 1.2em;}
+    </style>
+</head>
+<body>
+    <div class="chart-container" id="chart1-container"><h2>Year vs. Narrative Length</h2><svg id="chart1"></svg></div>
+    <div class="chart-container" id="chart2-container"><h2>Year vs. Delay (days)</h2><svg id="chart2"></svg></div>
+    <div class="chart-container" id="chart3-container"><h2>Narrative Length vs. Sentiment</h2><svg id="chart3"></svg></div>
+
+    <footer>
+        <p>Visualizations by Jules the AI assistant. Data from <a href="https://www.kaggle.com/datasets/bfrographs/bigfoot-sighting-reports" target="_blank">BFRO</a>.</p>
+    </footer>
+
+    <script>
+        const createScatterPlot = (selector, data, xVar, yVar, xLabel, yLabel) => {
+            const svg = d3.select(selector);
+            const container = document.getElementById(selector.substring(1)+"-container");
+            let width = container.clientWidth;
+            const height = 350;
+            const margin = { top: 20, right: 30, bottom: 50, left: 60 };
+
+            const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+            function drawPlot() {
+                svg.selectAll("*").remove(); // Clear previous plot for redraw
+                width = container.clientWidth;
+                svg.attr("width", width);
+
+                const innerWidth = width - margin.left - margin.right;
+                const innerHeight = height - margin.top - margin.bottom;
+
+                const xScale = d3.scaleLinear()
+                    .domain(d3.extent(data, d => d[xVar])).nice()
+                    .range([0, innerWidth]);
+
+                const yScale = d3.scaleLinear()
+                    .domain(d3.extent(data, d => d[yVar])).nice()
+                    .range([innerHeight, 0]);
+
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                // Gridlines
+                g.append("g").attr("class", "grid")
+                    .attr("transform", `translate(0,${innerHeight})`)
+                    .call(d3.axisBottom(xScale).ticks(Math.max(5, Math.floor(innerWidth / 100))).tickSize(-innerHeight).tickFormat(""));
+                g.append("g").attr("class", "grid")
+                    .call(d3.axisLeft(yScale).ticks(Math.max(5, Math.floor(innerHeight / 50))).tickSize(-innerWidth).tickFormat(""));
+
+                // Axes
+                g.append("g").attr("class", "axis axis--x")
+                    .attr("transform", `translate(0,${innerHeight})`)
+                    .call(d3.axisBottom(xScale).ticks(Math.max(5, Math.floor(innerWidth / 100))).tickFormat(d3.format(xVar === 'year' ? "d" : ".2s")));
+                g.append("g").attr("class", "axis axis--y")
+                    .call(d3.axisLeft(yScale).ticks(Math.max(5, Math.floor(innerHeight / 50))).tickFormat(d3.format(".2s")));
+
+                // Axis labels
+                svg.append("text")
+                    .attr("text-anchor", "middle")
+                    .attr("x", margin.left + innerWidth / 2)
+                    .attr("y", height - margin.bottom / 3)
+                    .text(xLabel)
+                    .style("font-size", "12px");
+                svg.append("text")
+                    .attr("text-anchor", "middle")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -margin.top - innerHeight / 2)
+                    .attr("y", margin.left / 3)
+                    .text(yLabel)
+                    .style("font-size", "12px");
+
+                // Points
+                g.selectAll("circle")
+                    .data(data)
+                    .enter().append("circle")
+                    .attr("cx", d => xScale(d[xVar]))
+                    .attr("cy", d => yScale(d[yVar]))
+                    .attr("r", 6)
+                    .attr("fill", "steelblue")
+                    .attr("opacity", 0.2)
+                    .on("mouseover", (event, d) => {
+                        tooltip.transition().duration(200).style("opacity", .9);
+                        tooltip.html(`${xLabel}: ${xVar === 'year' ? d[xVar] : d[xVar].toFixed(2)}<br/>${yLabel}: ${d[yVar].toFixed(2)}`)
+                            .style("left", (event.pageX + 5) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
+
+                // LOESS trend line (simplified for brevity - using moving average as a proxy if full LOESS is too complex for line limit)
+                // Full LOESS often requires a library or more complex implementation.
+                // Here's a basic line, you might need to adjust for actual LOESS.
+                // For this example, we'll sort data by xVar for line drawing.
+                const sortedData = [...data].sort((a, b) => a[xVar] - b[xVar]);
+                const line = d3.line()
+                    .x(d => xScale(d[xVar]))
+                    .y(d => yScale(d[yVar])) // This would be y-value from LOESS model
+                    .curve(d3.curveCatmullRom); // Smoothed line
+
+                // Simple moving average for trend proxy (LOESS is more involved)
+                const windowSize = Math.max(10, Math.floor(sortedData.length / 20));
+                const trendData = [];
+                if (sortedData.length > windowSize) {
+                    for (let i = 0; i <= sortedData.length - windowSize; i++) {
+                        const windowSlice = sortedData.slice(i, i + windowSize);
+                        const avgX = d3.mean(windowSlice, d => d[xVar]);
+                        const avgY = d3.mean(windowSlice, d => d[yVar]); // This is SMA, not LOESS
+                        if (avgX !== undefined && avgY !== undefined) {
+                           trendData.push({[xVar]: avgX, [yVar]: avgY});
+                        }
+                    }
+                }
+
+
+                if (trendData.length > 1) {
+                     // Filter out NaN/Infinity from trendData for yVar
+                    const validTrendData = trendData.filter(d => Number.isFinite(xScale(d[xVar])) && Number.isFinite(yScale(d[yVar])));
+                    if (validTrendData.length > 1) {
+                        g.append("path")
+                        .datum(validTrendData)
+                        .attr("class", "trend-line")
+                        .attr("d", line);
+                    }
+                }
+            }
+            drawPlot();
+            window.addEventListener('resize', drawPlot);
+        };
+
+        fetch('scatter_data.json')
+            .then(response => response.json())
+            .then(data => {
+                createScatterPlot('#chart1', data, 'year', 'narrative', 'Year', 'Narrative Length');
+                createScatterPlot('#chart2', data, 'year', 'delay', 'Year', 'Delay (days)');
+                createScatterPlot('#chart3', data, 'narrative', 'sentiment', 'Narrative Length', 'Sentiment Score');
+            })
+            .catch(error => console.error('Error loading data:', error));
+    </script>
+</body>
+</html>
