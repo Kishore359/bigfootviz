@@ -1,0 +1,22 @@
+{
+  "month_counts": {},
+  "day_night_counts": {},
+  "media_timeline_monthly": {},
+  "media_timeline_releases": {
+    "1972": "The Legend of Boggy Creek",
+    "1987": "Harry and the Hendersons",
+    "2008": "Minerva Monster"
+  },
+  "witness_class_crosstab": {},
+  "environment_verb_edges": [],
+  "season_word_freq": {},
+  "altitude_sentiment_scatter": [],
+  "delay_road_type_summary": {},
+  "pronoun_counts": {},
+  "pre_post_internet": {
+    "class_summary": {},
+    "narr_len_summary": {}
+  },
+  "season_weather_matrix": {},
+  "county_sightings_population": []
+}

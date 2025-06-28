@@ -1,0 +1,10 @@
+observed,location_details,county,state,title,classification,latitude,longitude,date,number,year,Month,Season,Time And Conditions,Environment,Nearest Road,Other Witnesses,Also Noticed,Submitted Date
+"Entity was tall and dark, walking in the woods.","Location: 45.123, -122.456. Near old logging road.","Clackamas","Oregon","Tall figure seen at dusk","Class A",45.123,-122.456,"2023-07-15",1,2023,"July","Summer","Evening, clear","Forest","Hwy 26","Wife saw it too","Strange smell","07/18/2023"
+"Heard loud howls.","Near river, coordinates unknown.","King","Washington","Howls near Green River","Class B",45.0,-122.0,"2022-10-03",1,2022,"October","Fall","Night, 9:30 PM, raining","Forest, River","Local Road","","","10/05/2022"
+"Footprints found.","46.5, -123.1, by the creek.","Lewis","Washington","Large footprints by creek","Class B",46.5,-123.1,"2021-04-02",,2021,"April","Spring","Daytime, muddy","Forest, Creek","State Route 6","Friend with me","Broken branches","04/03/2021"
+"Something crossed the road.","I-5 near exit 100.","Thurston","Washington","Creature crossed I-5","Class A",46.9,-122.9,"2020-01-10",,2020,"January","Winter","Night, foggy","","Interstate 5","","","01/10/2020"
+"Seen by the swamp.","Approx 30.12, -85.34","Bay","Florida","Swamp Ape sighting","Class A",30.12,-85.34,"2019-06-20",,2019,"June",,"Mid-day, sunny","Swamp","County Road 388","Brother","","06/25/2019"
+"No month, no season.","Location unknown.","Unknown","Unknown","Test case","Class C",,,,2022,"","","Evening","","","","","11/15/2022"
+"Only month given.","Location unknown.","Unknown","Unknown","Test case 2","Class C",,,,2022,"December","","Night","","","","","12/01/2022"
+"Only season given.","Location unknown.","Unknown","Unknown","Test case 3","Class B",,,,2023,,"Winter","Clear","","","Single person","","02/01/2023"
+"Ancient sighting, submitted recently", "Old farmstead", "Grant", "Oregon", "Old Tale", "Class C",,,,1953, "July", "Summer", "Daytime", "Farm", "", "", "Heard stories", "08/15/2022"

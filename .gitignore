@@ -1,0 +1,25 @@
+# Python virtual environment
+venv_bigfoot/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# NLTK data directory (if downloaded locally to project)
+nltk_data/
+
+# spaCy models (if downloaded locally to project)
+spacy_models/
+
+# Elevation cache
+elevation_cache.json
+
+# Data files (if large or should not be committed)
+# *.csv
+# *.json # Might want to commit the final json outputs, will decide later.
+
+# IDE / Editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
