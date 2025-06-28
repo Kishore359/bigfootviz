@@ -300,7 +300,7 @@
         const tooltip = d3.select("#tooltip");
 
         const chartSettings = {
-            margin: { top: 40, right: 30, bottom: 70, left: 70 }, // Default margin, increased top for titles
+            margin: { top: 40, right: 30, bottom: 70, left: 70 },
         };
 
         const NYT_PALETTE = {
@@ -473,9 +473,9 @@
             drawStory7Chart();
             drawStory8Chart();
             drawStory9Chart();
-            // drawStory10Chart();
-            // drawStory11Chart();
-            // drawStory12Chart();
+            drawStory10Chart();
+            drawStory11Chart();
+            drawStory12Chart();
         }
 
         let resizeTimer;
@@ -633,28 +633,154 @@
                  margin: { top: 40, right: 20, bottom: 40, left: 20 },
                  title: "The Gender of Bigfoot: Pronoun Usage",
                  isDonut: true,
-                 donutRadiusRatio: 0.6, // Makes the hole 60% of the radius
-                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray, "#b3a2c7", "#7fcdbb", "#edf8b1"] // Expanded palette
+                 donutRadiusRatio: 0.6,
+                 colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray, "#b3a2c7", "#7fcdbb", "#edf8b1"]
             };
             renderPieChart("#chart9", donutData, config);
+        }
+
+        function drawStory10Chart() {
+            const prePostData = (aggData && aggData.pre_post_internet && Object.keys(aggData.pre_post_internet).length > 0) ? aggData.pre_post_internet : mockAggData.pre_post_internet;
+            const config = {
+                margin: { ...chartSettings.margin, top: 50, bottom:50 }, // Overall margin
+                title: "Online Storytelling Shift"
+            };
+
+            const svg = d3.select("#chart10");
+            svg.selectAll("*").remove();
+
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), config.margin, 0.8); // Slightly taller aspect ratio for two panels
+
+            const panelPadding = 40;
+            const panelWidth = (boundedWidth - panelPadding) / 2;
+
+            // Panel A: Stacked Bar for Class Summary
+            const classPanelGroup = svg.append("g")
+                .attr("transform", `translate(${config.margin.left},${config.margin.top})`);
+
+            if (prePostData.class_summary && Object.keys(prePostData.class_summary).length > 0) {
+                const classes = ['Class A', 'Class B', 'Class C'];
+                const classTransformedData = Object.entries(prePostData.class_summary).map(([era, counts]) => {
+                    const entry = { category: era.replace("_", " ") };
+                    classes.forEach(cls => {
+                        entry[cls] = (counts && counts[cls]) ? +counts[cls] : 0;
+                    });
+                    return entry;
+                }).sort((a,b) => a.category.localeCompare(b.category));
+
+                renderStackedBarChart(classPanelGroup, classTransformedData, {
+                    margin: { top: 30, right: 10, bottom: 60, left: 50 },
+                    title: "Sighting Class",
+                    xDomainKey: 'category',
+                    keys: classes,
+                    svgWidth: panelWidth,
+                    svgHeight: boundedHeight,
+                    aspectRatio: boundedHeight / panelWidth, // Calculate based on allocated space
+                    colors: [NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray]
+                });
+            } else {
+                classPanelGroup.append("text").attr("x", panelWidth/2).attr("y", boundedHeight/2).attr("text-anchor","middle").text("No class summary data.");
+            }
+
+            // Panel B: Violin Plots for Narrative Length
+            const narrLenPanelGroup = svg.append("g")
+                .attr("transform", `translate(${config.margin.left + panelWidth + panelPadding},${config.margin.top})`);
+
+            if (prePostData.narr_len_summary && prePostData.narr_len_summary.pre_internet && prePostData.narr_len_summary.post_internet) {
+                const eras = ["pre_internet", "post_internet"];
+                 const narrLenXScale = d3.scaleBand().domain(eras.map(e => e.replace("_", " "))).range([0, panelWidth]).padding(0.2);
+                const violinPlotWidth = narrLenXScale.bandwidth();
+
+                eras.forEach(era => {
+                    const violinData = {
+                        values: prePostData.narr_len_summary[era].values,
+                        category: era.replace("_", " ")
+                    };
+                    if (violinData.values && violinData.values.length > 0) {
+                        const violinGroup = narrLenPanelGroup.append("g")
+                            .attr("transform", `translate(${narrLenXScale(violinData.category)},0)`); // Position each violin
+
+                        renderViolinPlot(violinGroup, violinData, {
+                            margin: { top: 30, right: 5, bottom: 60, left: 50 },
+                            title: "", // Sub-title handled by category
+                            color: era === "pre_internet" ? NYT_PALETTE.accentTeal : NYT_PALETTE.highlightOrange,
+                            svgWidth: violinPlotWidth,
+                            svgHeight: boundedHeight,
+                            aspectRatio: boundedHeight / violinPlotWidth,
+                            kdeBins: 10,
+                            yAxisLabel: era === "pre_internet" ? "Narrative Length" : "" // Only one Y-axis label
+                        });
+                    } else {
+                         narrLenPanelGroup.append("text")
+                            .attr("x", narrLenXScale(era.replace("_"," ")) + violinPlotWidth/2)
+                            .attr("y", boundedHeight/2)
+                            .attr("text-anchor", "middle")
+                            .text(`No narr_len data for ${era.replace("_"," ")}`);
+                    }
+                });
+                 narrLenPanelGroup.append("text") // X-axis label for violins
+                    .attr("x", panelWidth / 2)
+                    .attr("y", boundedHeight + 45)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .text("Era");
+
+            } else {
+                 narrLenPanelGroup.append("text").attr("x", panelWidth/2).attr("y", boundedHeight/2).attr("text-anchor","middle").text("No narrative length data.");
+            }
+             // Overall Title for Story 10
+            svg.append("text")
+                .attr("x", svgWidth / 2)
+                .attr("y", config.margin.top / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title);
+        }
+
+        function drawStory11Chart() {
+            const chartData = (aggData && aggData.season_weather_matrix && Object.keys(aggData.season_weather_matrix).length > 0) ? aggData.season_weather_matrix : mockAggData.season_weather_matrix;
+            const config = {
+                margin: { ...chartSettings.margin, top:50, right: 80, bottom: 70, left: 70 }, // Adjust for legend & labels
+                title: "Weather Whispers: Season vs. Term",
+                xDomain: ["clear", "cloud", "fog", "rain", "snow", "sunny", "wind"], // Explicit order
+                yDomain: ["Spring", "Summer", "Fall", "Winter"]
+            };
+            renderHeatmap("#chart11", chartData, config);
+        }
+
+        function drawStory12Chart() {
+            const chartData = (aggData && aggData.county_sightings_population && aggData.county_sightings_population.length > 0) ? aggData.county_sightings_population : mockAggData.county_sightings_population;
+            const topoJsonUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+            const config = {
+                margin: { top: 30, right: 10, bottom: 10, left: 10 },
+                title: "Where It Lurks: Sightings per 100k Population"
+            };
+            renderChoroplethMap("#chart12", topoJsonUrl, chartData, config);
         }
 
 
         // --- Reusable Chart Helper Functions ---
         function getChartDimensions(svgNode, margin, aspectRatio = 0.6) {
             const containerWidth = svgNode.parentNode.getBoundingClientRect().width;
-            const svgWidth = Math.max(300, containerWidth);
-            const svgHeight = svgWidth * aspectRatio;
+            let svgWidth = Math.max(300, containerWidth);
+            let svgHeight = svgWidth * aspectRatio;
 
-            d3.select(svgNode).attr("width", svgWidth).attr("height", svgHeight);
+            // If svgNode is a <g> element (for subplots), use passed width/height from config
+            if (svgNode.tagName === 'g' && config && config.svgWidth && config.svgHeight) {
+                svgWidth = config.svgWidth;
+                svgHeight = config.svgHeight;
+            } else {
+                 d3.select(svgNode).attr("width", svgWidth).attr("height", svgHeight);
+            }
 
             const boundedWidth = svgWidth - margin.left - margin.right;
             const boundedHeight = svgHeight - margin.top - margin.bottom;
             return { svgWidth, svgHeight, boundedWidth, boundedHeight };
         }
 
-        function renderLineAreaChart(svgSelector, chartData, config) {
-            const svg = d3.select(svgSelector);
+        function renderLineAreaChart(svgSelectorOrElement, chartData, config) {
+            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
             svg.selectAll("*").remove();
 
             const margin = config.margin || chartSettings.margin;
@@ -697,7 +823,7 @@
             const yMax = d3.max(processedMonthData, d => d.count) || 1;
             const yScale = d3.scaleLinear().domain([0, yMax]).nice().range([boundedHeight, 0]);
 
-            if (chartData.season_counts && Object.keys(chartData.season_counts).length > 0 && !isTimeline && svgSelector === "#chart1") {
+            if (chartData.season_counts && Object.keys(chartData.season_counts).length > 0 && !isTimeline && (svgSelector === "#chart1" || svg.attr("id") === "chart1")) {
                 const seasonOrder = ["Spring", "Summer", "Fall", "Winter"];
                 const seasonMonths = { "Spring": [3,4,5], "Summer": [6,7,8], "Fall": [9,10,11], "Winter": [12,1,2] };
 
@@ -840,8 +966,8 @@
                 .text(config.title || "Chart Title");
         }
 
-        function renderPieChart(svgSelector, data, config) {
-            const svg = d3.select(svgSelector);
+        function renderPieChart(svgSelectorOrElement, data, config) {
+            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
             svg.selectAll("*").remove();
 
             const margin = config.margin || chartSettings.margin;
@@ -934,47 +1060,51 @@
                 .text(config.title || "Chart Title");
         }
 
-        function renderStackedBarChart(svgSelector, data, config) {
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.6);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+        function renderStackedBarChart(svgSelectorOrElement, data, config) { // Can take element or selector
+            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+            const isSubPlot = svg.node().tagName === 'g';
+            if (!isSubPlot) svg.selectAll("*").remove(); // Clear only if it's the main SVG
 
-            if (!data || Object.keys(data).length === 0 || Object.values(data).every(d => typeof d !== 'object' || Object.keys(d).length === 0) ) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for stacked bar chart.");
+            const margin = config.margin || chartSettings.margin;
+            let svgForDims = isSubPlot ? d3.select(svg.node().ownerSVGElement) : svg;
+            if (config.svgWidth && config.svgHeight && isSubPlot) { // Use provided dimensions for subplots
+                 // For subplots, dimensions are relative to the group, not the whole SVG
+            } else {
+                svgForDims = svg; // Use the main SVG for dimensioning
+            }
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svgForDims.node(), margin, config.aspectRatio || 0.6);
+
+            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            if (isSubPlot) g.selectAll("*").remove(); // Clear group if it's a sub-plot
+
+
+            if (!data || data.length === 0 || (Array.isArray(data) && data.every(d => Object.keys(d).length <=1 )) ) { // Check if data has more than just category key
+                g.append("text").attr("x", (isSubPlot? config.svgWidth : boundedWidth) / 2).attr("y", (isSubPlot ? config.svgHeight : boundedHeight) / 2).attr("text-anchor", "middle").text("No data for stacked bar chart.");
                 return;
             }
 
-            const classes = ['Class A', 'Class B', 'Class C'];
-            const transformedData = Object.entries(data).map(([witnessGrpKey, classCounts]) => {
-                const entry = { witness_grp_raw: witnessGrpKey, witness_grp: witnessGrpKey === 'true' ? 'Group' : 'Solo' };
-                classes.forEach(cls => {
-                    entry[cls] = (classCounts && classCounts[cls]) ? +classCounts[cls] : 0;
-                });
-                return entry;
-            }).sort((a,b) => a.witness_grp.localeCompare(b.witness_grp));
+            const categories = data.map(d => d[config.xDomainKey || 'category']);
+            const stackKeys = config.keys || Object.keys(data[0]).filter(k => k !== (config.xDomainKey || 'category'));
 
-            const stack = d3.stack().keys(classes);
-            const series = stack(transformedData);
+            const stack = d3.stack().keys(stackKeys);
+            const series = stack(data);
 
             const xScale = d3.scaleBand()
-                .domain(transformedData.map(d => d.witness_grp))
-                .range([0, boundedWidth])
+                .domain(categories)
+                .range([0, isSubPlot ? config.svgWidth - margin.left - margin.right : boundedWidth])
                 .padding(0.25);
 
             const yScale = d3.scaleLinear()
                 .domain([0, d3.max(series, d => d3.max(d, s => s[1])) || 1])
                 .nice()
-                .range([boundedHeight, 0]);
+                .range([isSubPlot ? config.svgHeight - margin.top - margin.bottom : boundedHeight, 0]);
 
-            const color = d3.scaleOrdinal()
-                .domain(classes)
-                .range([NYT_PALETTE.accentTeal, NYT_PALETTE.highlightOrange, NYT_PALETTE.midGray]);
+            const color = d3.scaleOrdinal(config.colors || d3.schemeTableau10)
+                .domain(stackKeys);
 
             g.append("g")
                 .attr("class", "axis x-axis")
-                .attr("transform", `translate(0,${boundedHeight})`)
+                .attr("transform", `translate(0,${isSubPlot ? config.svgHeight - margin.top - margin.bottom : boundedHeight})`)
                 .call(d3.axisBottom(xScale).tickSizeOuter(0));
 
             g.append("g")
@@ -983,7 +1113,7 @@
 
             g.append("g")
                 .attr("class", "grid")
-                .call(d3.axisLeft(yScale).ticks(5).tickSize(-boundedWidth).tickFormat(""));
+                .call(d3.axisLeft(yScale).ticks(5).tickSize(-(isSubPlot ? config.svgWidth - margin.left - margin.right : boundedWidth)).tickFormat(""));
 
             const groups = g.selectAll(".bargroup")
                 .data(series)
@@ -994,45 +1124,56 @@
             groups.selectAll("rect")
                 .data(d => d)
                 .enter().append("rect")
-                .attr("x", d => xScale(d.data.witness_grp))
+                .attr("x", d => xScale(d.data[config.xDomainKey || 'category']))
                 .attr("y", d => yScale(d[1]))
                 .attr("height", d => Math.max(0, yScale(d[0]) - yScale(d[1])))
                 .attr("width", xScale.bandwidth())
                 .on("mouseover", function(event, d_bar) {
                     const seriesData = d3.select(this.parentNode).datum();
-                    const totalInBar = d_bar.data[seriesData.key];
-                    showTooltip(event, `${seriesData.key} (${d_bar.data.witness_grp}): ${totalInBar}`);
+                    const categoryValue = d_bar.data[config.xDomainKey || 'category'];
+                    const barValue = d_bar.data[seriesData.key];
+                    showTooltip(event, `${seriesData.key} (${categoryValue}): ${barValue}`);
                 })
                 .on("mousemove", moveTooltip)
                 .on("mouseout", hideTooltip);
 
-            const legend = svg.selectAll(".legend")
-                .data(classes)
-                .enter().append("g")
-                .attr("class", "legend")
-                .attr("transform", (d, i) => `translate(${boundedWidth + margin.left + 15},${margin.top + i * 20})`);
+            if (!isSubPlot) { // Only add legend and main title if it's not a subplot
+                const legend = svg.selectAll(".legend")
+                    .data(stackKeys)
+                    .enter().append("g")
+                    .attr("class", "legend")
+                    .attr("transform", (d, i) => `translate(${boundedWidth + margin.left + 15},${margin.top + i * 20})`);
 
-            legend.append("rect")
-                .attr("x", 0)
-                .attr("width", 12)
-                .attr("height", 12)
-                .style("fill", color);
+                legend.append("rect")
+                    .attr("x", 0)
+                    .attr("width", 12)
+                    .attr("height", 12)
+                    .style("fill", color);
 
-            legend.append("text")
-                .attr("x", 18)
-                .attr("y", 9)
-                .attr("dy", ".35em")
-                .style("text-anchor", "start")
-                .style("font-size","11px")
-                .text(d => d);
+                legend.append("text")
+                    .attr("x", 18)
+                    .attr("y", 9)
+                    .attr("dy", ".35em")
+                    .style("text-anchor", "start")
+                    .style("font-size","11px")
+                    .text(d => d);
 
-            svg.append("text")
-                .attr("x", (margin.left + boundedWidth / 2))
-                .attr("y", margin.top / 2)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
+                svg.append("text")
+                    .attr("x", (margin.left + boundedWidth / 2))
+                    .attr("y", margin.top / 2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .style("font-family", "var(--font-heading)")
+                    .text(config.title || "Chart Title");
+            } else { // If subplot, add its specific title
+                 g.append("text")
+                    .attr("x", (config.svgWidth - margin.left - margin.right) / 2)
+                    .attr("y", -margin.top / 2 + 5)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("font-family", "var(--font-heading)")
+                    .text(config.title);
+            }
         }
 
         function renderForceNetwork(svgSelector, data, config) {
@@ -1251,13 +1392,16 @@
             });
         }
 
-        function renderScatterPlot(svgSelector, data, config) {
-            console.log(`Rendering ScatterPlot for ${svgSelector}`);
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
+        function renderScatterPlot(svgSelectorOrElement, data, config) {
+            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+            const isSubPlot = svg.node().tagName === 'g';
+            if (!isSubPlot) svg.selectAll("*").remove();
+            else g.selectAll("*").remove(); // Clear group if subplot
+
+
             const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.6);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(isSubPlot ? svg.node().ownerSVGElement : svg.node(), margin, config.aspectRatio || 0.6, isSubPlot ? config : null);
+            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
              if (!data || data.length === 0) {
                 g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for scatter plot.");
@@ -1347,22 +1491,31 @@
                 }
             }
 
-            svg.append("text")
-                .attr("x", (margin.left + boundedWidth / 2))
-                .attr("y", margin.top / 2)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
+            if (!isSubPlot) {
+                svg.append("text")
+                    .attr("x", (margin.left + boundedWidth / 2))
+                    .attr("y", margin.top / 2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .style("font-family", "var(--font-heading)")
+                    .text(config.title || "Chart Title");
+            }
         }
 
-        function renderBoxPlot(svgSelector, data, config) {
-            console.log(`Rendering BoxPlot for ${svgSelector}`);
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
+        function renderBoxPlot(svgSelectorOrElement, data, config) {
+            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+            const isSubPlot = svg.node().tagName === 'g';
+            if (!isSubPlot) svg.selectAll("*").remove();
+            else svg.selectAll("*").remove();
+
             const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.6);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            let svgForDims = isSubPlot ? d3.select(svg.node().ownerSVGElement) : svg;
+             if (config.svgWidth && config.svgHeight && isSubPlot) { }
+             else { svgForDims = svg; }
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svgForDims.node(), margin, config.aspectRatio || 0.6, isSubPlot ? config : null);
+
+            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            if (isSubPlot) g.selectAll("*").remove();
 
             if (!data || Object.keys(data).length === 0) {
                 g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for box plot.");
@@ -1404,7 +1557,8 @@
                 .attr("class", "axis y-axis")
                 .call(d3.axisLeft(yScale).ticks(5, d => {
                         if (d === 0) return "0";
-                        if (Math.log10(d) % 1 === 0 || d === yMinDomain || d === yMaxDomain ) return d3.format("~s")(d);
+                        const logVal = Math.log10(d);
+                        if (logVal === Math.floor(logVal) || d === yMinDomain || d === yMaxDomain ) return d3.format("~s")(d);
                         return "";
                     })
                     .tickSizeOuter(0));
@@ -1447,7 +1601,7 @@
                     .attr("width", boxWidth)
                     .attr("stroke", NYT_PALETTE.charcoal)
                     .attr("fill", NYT_PALETTE.accentTeal)
-                    .attr("opacity", 0.7)
+                    .attr("opacity", 0.8)
                      .on("mouseover", function(event) {
                         showTooltip(event, `${cat}:<br>Min: ${stats.min.toFixed(0)}<br>Q1: ${stats.q1.toFixed(0)}<br>Med: ${stats.median.toFixed(0)}<br>Q3: ${stats.q3.toFixed(0)}<br>Max: ${stats.max.toFixed(0)}<br>N: ${stats.count}`);
                     })
@@ -1466,28 +1620,121 @@
                 g.append("line").attr("x1", xCenter - boxWidth/3).attr("x2", xCenter + boxWidth/3).attr("y1", yScale(logSafeMax)).attr("y2", yScale(logSafeMax)).attr("stroke", NYT_PALETTE.charcoal);
             });
 
-            svg.append("text")
-                .attr("x", (margin.left + boundedWidth / 2))
-                .attr("y", margin.top / 2)
-                .attr("text-anchor", "middle")
-                .style("font-size", "16px")
-                .style("font-family", "var(--font-heading)")
-                .text(config.title || "Chart Title");
+            if (!isSubPlot) {
+                svg.append("text")
+                    .attr("x", (margin.left + boundedWidth / 2))
+                    .attr("y", margin.top / 2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .style("font-family", "var(--font-heading)")
+                    .text(config.title || "Chart Title");
+            }
         }
 
-        function renderViolinPlot(svgSelector, data, config) {
-            console.log(`Rendering ViolinPlot for ${svgSelector}`);
-            const svg = d3.select(svgSelector);
-            svg.selectAll("*").remove();
-            const margin = config.margin || chartSettings.margin;
-            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(svg.node(), margin, config.aspectRatio || 0.6);
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+        function renderViolinPlot(svgSelectorOrElement, data, config) {
+            const svg = (typeof svgSelectorOrElement === 'string') ? d3.select(svgSelectorOrElement) : svgSelectorOrElement;
+            const isSubPlot = svg.node().tagName === 'g';
+            if (!isSubPlot) svg.selectAll("*").remove();
+            else svg.selectAll("*").remove();
 
-             if (!data || !data.pre_internet || !data.post_internet || !data.pre_internet.values || !data.post_internet.values) {
-                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for violin plot.");
+            const margin = config.margin || {top: 10, right: 10, bottom: 30, left: 40}; // Smaller default for subplots
+            let chartSpecificWidth = config.svgWidth || svg.node().parentNode.getBoundingClientRect().width;
+            let chartSpecificHeight = config.svgHeight || chartSpecificWidth * (config.aspectRatio || 0.8);
+
+            const { svgWidth, svgHeight, boundedWidth, boundedHeight } = getChartDimensions(
+                isSubPlot ? svg.node().ownerSVGElement : svg.node(),
+                margin,
+                config.aspectRatio || (chartSpecificHeight/chartSpecificWidth),
+                isSubPlot ? {width: chartSpecificWidth, height: chartSpecificHeight} : null
+            );
+
+            const g = isSubPlot ? svg : svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            if (isSubPlot) g.selectAll("*").remove();
+
+
+            if (!data || !data.values || data.values.length < 2) { // Need at least 2 points for KDE
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("Not enough data.");
                 return;
             }
-            g.append("text").attr("x", 10).attr("y", 20).text("ViolinPlot Placeholder - Full D3 TBD");
+
+            const values = data.values.sort(d3.ascending);
+
+            const yScale = d3.scaleLinear()
+                .domain(d3.extent(values)).nice() // Use actual extent for y-axis
+                .range([boundedHeight, 0]);
+
+            const yAxisGroup = g.append("g").attr("class", "axis y-axis");
+            if (config.yAxisLabel || !isSubPlot) { // Show Y axis only if label provided or it's not a subplot assuming shared axis
+                 yAxisGroup.call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0));
+                 if(config.yAxisLabel) {
+                    g.append("text")
+                        .attr("transform", "rotate(-90)")
+                        .attr("y", 0 - margin.left + 15)
+                        .attr("x", 0 - (boundedHeight / 2))
+                        .attr("dy", "1em").style("text-anchor", "middle")
+                        .style("font-size", "10px").style("fill", NYT_PALETTE.midGray)
+                        .text(config.yAxisLabel);
+                 }
+            }
+
+
+            const histogram = d3.histogram()
+                .domain(yScale.domain())
+                .thresholds(yScale.ticks(config.kdeBins || 15))
+                .value(d => d);
+
+            const bins = histogram(values);
+
+            let maxNum = 0;
+            for ( let i = 0; i<bins.length; i++ ) {
+                if (bins[i].length > maxNum) { maxNum = bins[i].length; }
+            }
+            if (maxNum === 0) maxNum = 1; // Avoid division by zero if all bins are empty (should not happen with data check)
+
+            const xNum = d3.scaleLinear()
+                .range([0, boundedWidth / 2])
+                .domain([-maxNum, maxNum]);
+
+            const area = d3.area()
+                .x0(d => xNum(-d.length))
+                .x1(d => xNum(d.length))
+                .y(d => yScale(d.x0 + (d.x1-d.x0)/2 ))
+                .curve(d3.curveCatmullRom);
+
+            g.append("path")
+                .datum(bins)
+                .attr("fill", config.color || NYT_PALETTE.accentTeal)
+                .attr("stroke", NYT_PALETTE.charcoal)
+                .attr("stroke-width", 1)
+                .attr("opacity", 0.7)
+                .attr("d", area);
+
+            const quartiles = [
+                d3.quantile(values, 0.25),
+                d3.quantile(values, 0.50),
+                d3.quantile(values, 0.75)
+            ];
+
+            g.selectAll(".quartile-line")
+                .data(quartiles.filter(q => q !== undefined)) // Filter out undefined quartiles (e.g. if too few data points)
+                .enter()
+                .append("line")
+                .attr("class", "quartile-line")
+                .attr("x1", xNum(-maxNum * 0.15))
+                .attr("x2", xNum(maxNum * 0.15))
+                .attr("y1", d => yScale(d))
+                .attr("y2", d => yScale(d))
+                .attr("stroke", d3.color(config.color || NYT_PALETTE.accentTeal).darker(1.5))
+                .attr("stroke-width", 1.5);
+
+            // X-axis category label below violin
+            g.append("text")
+                .attr("x", boundedWidth / 2 ) // Center of the violin's allocated space
+                .attr("y", boundedHeight + 25) // Below violin
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-family", "var(--font-body)")
+                .text(data.category || "");
         }
 
         function renderHeatmap(svgSelector, data, config) {
@@ -1502,7 +1749,77 @@
                 g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No data for heatmap.");
                 return;
             }
-             g.append("text").attr("x", 10).attr("y", 20).text("Heatmap Placeholder - Full D3 TBD");
+
+            const seasons = config.yDomain || Object.keys(data);
+            const weatherTerms = config.xDomain || [...new Set(Object.values(data).flatMap(Object.keys))].sort();
+
+            const flatData = [];
+            seasons.forEach(season => {
+                weatherTerms.forEach(term => {
+                    flatData.push({
+                        season: season,
+                        term: term,
+                        count: (data[season] && data[season][term]) ? +data[season][term] : 0
+                    });
+                });
+            });
+
+            const xScale = d3.scaleBand()
+                .domain(weatherTerms)
+                .range([0, boundedWidth])
+                .padding(0.05);
+
+            const yScale = d3.scaleBand()
+                .domain(seasons)
+                .range([0, boundedHeight])
+                .padding(0.05);
+
+            const maxCount = d3.max(flatData, d => d.count) || 1;
+            const colorScale = d3.scaleSequential(d3.interpolateBlues)
+                .domain([0, maxCount]);
+
+            g.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${boundedHeight})`)
+                .call(d3.axisBottom(xScale).tickSizeOuter(0))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)");
+
+            g.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(yScale).tickSizeOuter(0));
+
+            g.selectAll(".heatmap-cell")
+                .data(flatData)
+                .join("rect")
+                .attr("class", "heatmap-cell")
+                .attr("x", d => xScale(d.term))
+                .attr("y", d => yScale(d.season))
+                .attr("width", xScale.bandwidth())
+                .attr("height", yScale.bandwidth())
+                .attr("fill", d => d.count > 0 ? colorScale(d.count) : "#fff") // White for zero count
+                .attr("stroke", NYT_PALETTE.hairline)
+                .attr("stroke-width", 0.5)
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("stroke", NYT_PALETTE.charcoal).attr("stroke-width", 1.5);
+                    showTooltip(event, `${d.season} - ${d.term}<br>Count: ${d.count}`);
+                })
+                .on("mousemove", moveTooltip)
+                .on("mouseout", function(event, d) {
+                    d3.select(this).attr("stroke", NYT_PALETTE.hairline).attr("stroke-width", 0.5);
+                    hideTooltip();
+                });
+
+            svg.append("text")
+                .attr("x", (svgWidth / 2))
+                .attr("y", margin.top / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-family", "var(--font-heading)")
+                .text(config.title || "Chart Title");
         }
 
         async function renderChoroplethMap(svgSelector, geoDataUrl, valueData, config) {
@@ -1517,7 +1834,79 @@
                 g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("No sighting data for map.");
                 return;
             }
-            g.append("text").attr("x", 10).attr("y", 20).text("Choropleth Placeholder - Full D3 TBD");
+
+            try {
+                const us = await d3.json(geoDataUrl);
+                const counties = topojson.feature(us, us.objects.counties);
+                const states = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+
+                const dataMap = new Map();
+                valueData.forEach(d => {
+                    if (d.pop_2020 > 0) {
+                        d.rate = (d.sightings / d.pop_2020) * 100000;
+                    } else {
+                        d.rate = 0;
+                    }
+                    dataMap.set(d.county_fips, d);
+                });
+
+                const rates = Array.from(dataMap.values()).map(d => d.rate).filter(r => r !== undefined && r > 0);
+                const colorScale = d3.scaleQuantize()
+                    .domain([0, d3.quantile(rates, 0.95) || 10]) // Cap at 95th percentile
+                    .range(d3.schemeBlues[7]); // Use 7 shades of blue
+
+                const projection = d3.geoAlbersUsa().fitSize([boundedWidth, boundedHeight], counties);
+                const pathGenerator = d3.geoPath().projection(projection);
+
+                g.selectAll(".county")
+                    .data(counties.features)
+                    .join("path")
+                    .attr("class", "county")
+                    .attr("d", pathGenerator)
+                    .attr("fill", d => {
+                        const countyData = dataMap.get(d.id);
+                        return countyData && countyData.rate > 0 ? colorScale(countyData.rate) : "#eee"; // Light gray for no/zero data
+                    })
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 0.5)
+                    .on("mouseover", function(event, d_map) {
+                        d3.select(this).attr("stroke", NYT_PALETTE.charcoal).attr("stroke-width", 1);
+                        const countyData = dataMap.get(d_map.id);
+                        let tooltipHtml = `County FIPS: ${d_map.id}`; // Basic info
+                        if (d_map.properties && d_map.properties.name) tooltipHtml = `${d_map.properties.name} County`;
+
+                        if (countyData) {
+                            tooltipHtml = `${countyData.name || (d_map.properties && d_map.properties.name) || 'N/A County'}<br>Rate: ${countyData.rate ? countyData.rate.toFixed(2) : 'N/A'} per 100k<br>Sightings: ${countyData.sightings}<br>Pop 2020: ${d3.format(",")(countyData.pop_2020)}`;
+                        } else {
+                            tooltipHtml += "<br>No sighting data";
+                        }
+                        showTooltip(event, tooltipHtml);
+                    })
+                    .on("mousemove", moveTooltip)
+                    .on("mouseout", function(event, d_map) {
+                        d3.select(this).attr("stroke", "#fff").attr("stroke-width", 0.5);
+                        hideTooltip();
+                    });
+
+                g.append("path")
+                    .datum(states)
+                    .attr("fill", "none")
+                    .attr("stroke", NYT_PALETTE.midGray)
+                    .attr("stroke-linejoin", "round")
+                    .attr("d", pathGenerator);
+
+                svg.append("text")
+                    .attr("x", (svgWidth / 2))
+                    .attr("y", margin.top / 1.5)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .style("font-family", "var(--font-heading)")
+                    .text(config.title || "US County Sightings");
+
+            } catch (error) {
+                console.error("Error rendering choropleth map:", error);
+                g.append("text").attr("x", boundedWidth / 2).attr("y", boundedHeight / 2).attr("text-anchor", "middle").text("Error loading map data.");
+            }
         }
 
         window.renderFunctions = {
